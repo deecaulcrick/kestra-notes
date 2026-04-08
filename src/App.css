@@ -1,0 +1,131 @@
+/* ── Design tokens ────────────────────────────────────────────────────────── */
+
+:root {
+  /* Backgrounds */
+  --color-bg-primary:      #1a1717;
+  --color-surface-sidebar: #202020; 
+  --color-surface-hover:   rgba(255, 255, 255, 0.05);
+  --color-surface-active:  rgba(255, 255, 255, 0.08);
+
+  /* Text */
+  --color-text-primary:   #e8e8e8;
+  --color-text-secondary: #a0a0a0;
+  --color-text-tertiary:  #666666;
+
+  /* Borders */
+  --color-border:          rgba(255, 255, 255, 0.08);
+  --color-border-secondary: rgba(255, 255, 255, 0.12);
+  --color-border-tertiary: rgba(255, 255, 255, 0.06);
+
+  /* Accent */
+  --color-accent:          #6d9eff;
+
+  /* Semantic backgrounds (used in editor callouts, table headers, etc.) */
+  --color-background-secondary: rgba(255, 255, 255, 0.04);
+  --color-background-info:      rgba(109, 158, 255, 0.1);
+  --color-background-warning:   rgba(255, 180, 0, 0.1);
+  --color-background-success:   rgba(80, 200, 120, 0.1);
+
+  /* Semantic borders */
+  --color-border-info:    rgba(109, 158, 255, 0.4);
+  --color-border-warning: rgba(255, 180, 0, 0.4);
+  --color-border-success: rgba(80, 200, 120, 0.4);
+
+  /* Semantic text */
+  --color-text-info:    #6d9eff;
+  --color-text-warning: #ffb400;
+  --color-text-success: #50c878;
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ── Vault picker (launch screen) ─────────────────────────────────────────── */
+
+.vault-picker {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+}
+
+.vault-picker-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 56px;
+  border-radius: 16px;
+  background: var(--color-surface-sidebar);
+  border: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.vault-picker-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.03em;
+}
+
+.vault-picker-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.vault-picker-error {
+  margin: 0;
+  font-size: 13px;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 8px;
+  padding: 8px 14px;
+  max-width: 300px;
+}
+
+.vault-picker-btn {
+  margin-top: 8px;
+  padding: 10px 28px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.vault-picker-btn:hover {
+  opacity: 0.88;
+}
+
+.vault-picker-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

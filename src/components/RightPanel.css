@@ -1,0 +1,105 @@
+.right-panel {
+  width: 240px;
+  flex-shrink: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-surface-sidebar);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.right-panel--empty {
+  width: 240px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-surface-sidebar);
+}
+
+.right-panel-section {
+  padding: 16px 0 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.right-panel-section:last-child {
+  border-bottom: none;
+}
+
+.right-panel-heading {
+  margin: 0 0 8px;
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.right-panel-count {
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border-radius: 10px;
+  padding: 0 6px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.right-panel-empty {
+  margin: 0;
+  padding: 4px 14px 8px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.right-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.right-panel-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  border-radius: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.right-panel-link:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.right-panel-link--ghost {
+  color: var(--color-text-tertiary);
+  cursor: default;
+}
+
+.right-panel-link--ghost:hover {
+  background: transparent;
+  color: var(--color-text-tertiary);
+}
+
+.right-panel-link-icon {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  flex-shrink: 0;
+}
