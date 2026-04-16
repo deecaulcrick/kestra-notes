@@ -115,12 +115,14 @@ export const WikiLink = Extension.create<WikiLinkOptions>({
             const title = span.dataset.wikilinkTitle;
             if (!title) return false;
 
-            const resolved = wikiLinkKey.getState(view.state)?.resolved;
-            const noteId = resolved?.get(title);
+            const pluginState = wikiLinkKey.getState(view.state);
+            const noteId = pluginState?.resolved?.get(title);
 
             if (noteId) {
               options.onNavigate?.(noteId);
             } else {
+              // Create the note, then update the resolved map so future clicks
+              // navigate instead of creating again.
               options.onCreateNote?.(title);
             }
             return true;
@@ -180,9 +182,9 @@ function scheduleResolution(
     const uniqueTitles = [...new Set(matches.map((m) => m.title))];
     if (uniqueTitles.length === 0) return;
 
-    // Only re-resolve titles we haven't seen before.
-    const toResolve = uniqueTitles.filter((t) => !currentResolved.has(t));
-    if (toResolve.length === 0) return;
+    // Re-resolve all titles every time — a ghost link may have been created
+    // since the last resolution and would otherwise stay unresolved forever.
+    const toResolve = uniqueTitles;
 
     try {
       const results = await resolveWikilinks(toResolve);

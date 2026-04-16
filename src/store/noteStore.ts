@@ -1,21 +1,29 @@
 import { create } from "zustand";
-import { type Note, type Workspace, openVault, listNotes, createNote } from "../lib/tauri";
+import {
+  type Note,
+  type Workspace,
+  openVault,
+  listNotes,
+  createNote,
+  getNotesByTag,
+  pinNote,
+  deleteNote,
+} from "../lib/tauri";
 
 interface NoteStore {
-  // Vault state
   workspace: Workspace | null;
   isLoading: boolean;
   error: string | null;
-
-  // Note list
   notes: Note[];
   activeNoteId: string | null;
 
-  // Actions
   openVault: (path: string) => Promise<void>;
   createNote: (title?: string) => Promise<void>;
   loadNotes: () => Promise<void>;
+  loadNotesByTag: (tagName: string) => Promise<void>;
   setActiveNote: (id: string) => void;
+  pinNote: (id: string, pinned: boolean) => Promise<void>;
+  deleteNote: (id: string) => Promise<void>;
 }
 
 export const useNoteStore = create<NoteStore>((set, get) => ({
@@ -30,7 +38,6 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     try {
       const workspace = await openVault(path);
       set({ workspace, isLoading: false });
-      // Load notes immediately after opening vault.
       await get().loadNotes();
     } catch (e) {
       set({ isLoading: false, error: String(e) });
@@ -40,7 +47,6 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   createNote: async (title = "Untitled") => {
     try {
       const note = await createNote(title);
-      // Prepend to list and immediately select the new note.
       set((s) => ({ notes: [note, ...s.notes], activeNoteId: note.id }));
     } catch (e) {
       set({ error: String(e) });
@@ -56,7 +62,31 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     }
   },
 
+  loadNotesByTag: async (tagName: string) => {
+    try {
+      const notes = await getNotesByTag(tagName);
+      set({ notes });
+    } catch (e) {
+      set({ error: String(e) });
+    }
+  },
+
   setActiveNote: (id: string) => {
     set({ activeNoteId: id });
+  },
+
+  pinNote: async (id: string, pinnedVal: boolean) => {
+    await pinNote(id, pinnedVal);
+    set((s) => ({
+      notes: s.notes.map((n) => n.id === id ? { ...n, pinned: pinnedVal } : n),
+    }));
+  },
+
+  deleteNote: async (id: string) => {
+    await deleteNote(id);
+    set((s) => ({
+      notes: s.notes.filter((n) => n.id !== id),
+      activeNoteId: s.activeNoteId === id ? null : s.activeNoteId,
+    }));
   },
 }));

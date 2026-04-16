@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { Pin, Trash2, MoreHorizontal } from "lucide-react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Typography from "@tiptap/extension-typography";
@@ -21,21 +22,23 @@ import CharacterCount from "@tiptap/extension-character-count";
 import Focus from "@tiptap/extension-focus";
 import { createLowlight, common } from "lowlight";
 import { Markdown } from "tiptap-markdown";
+import { open } from "@tauri-apps/plugin-dialog";
 
 import { WikiLink, registerWikiLinkDispatch, wikiLinkKey } from "./extensions/WikiLink";
+import { createNote as createNoteCmd } from "../../lib/tauri";
 import { SlashCommands, registerImageRequestHandler } from "./extensions/SlashCommands";
 import { Callout } from "./extensions/Callout";
 import { ImageUpload, insertFromPath } from "./extensions/ImageUpload";
+import { Tag } from "./extensions/Tag";
 import { EditorToolbar } from "./EditorToolbar";
 import { useNote } from "../../hooks/useNote";
 import { useNoteStore } from "../../store/noteStore";
+import { useUIStore } from "../../store/uiStore";
+import { useThemeStore } from "../../store/themeStore";
 import "./EditorStyles.css";
-
-import { open } from "@tauri-apps/plugin-dialog";
 
 const lowlight = createLowlight(common);
 
-// tiptap-markdown adds `markdown` to editor storage but doesn't ship types.
 type MarkdownStorage = { getMarkdown(): string };
 
 interface Props {
@@ -43,32 +46,34 @@ interface Props {
 }
 
 export function Editor({ noteId }: Props) {
-  // Stable ref so the onUpdate closure always calls the latest scheduleSave.
   const scheduleSaveRef = useRef<((content: string) => void) | undefined>(undefined);
-
-  // Bubble menu state — position + visibility driven by DOM selection.
   const [bubbleRect, setBubbleRect] = useState<DOMRect | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const { setActiveNote, createNote, workspace } = useNoteStore();
+  const { setActiveNote, workspace, notes, pinNote, deleteNote } = useNoteStore();
   const vaultPath = workspace?.vault_path ?? null;
+  const setActiveTag = useUIStore((s) => s.setActiveTag);
+  const typography = useThemeStore((s) => s.typography);
 
-  // Stable refs for WikiLink callbacks so closures stay current without
-  // recreating the editor on every store update.
   const onNavigateRef = useRef<(id: string) => void>((id) => setActiveNote(id));
-  const onCreateNoteRef = useRef<(title: string) => void>((title) => createNote(title));
+  const onCreateNoteRef = useRef<(title: string) => void>((title) => { void createNoteCmd(title); });
+  const onTagClickRef = useRef<(tag: string) => void>((tag) => setActiveTag(tag));
   onNavigateRef.current = (id) => setActiveNote(id);
-  onCreateNoteRef.current = (title) => { void createNote(title); };
+  onCreateNoteRef.current = (title) => {
+    void createNoteCmd(title).then((note) => {
+      // Navigate to the note (whether newly created or already existing).
+      setActiveNote(note.id);
+    });
+  };
+  onTagClickRef.current = (tag) => setActiveTag(tag);
 
-  // Keep a ref to the current noteId so ImageUpload closures stay fresh.
   const noteIdRef = useRef<string | null>(noteId);
   noteIdRef.current = noteId;
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        // CodeBlockLowlight replaces the default code block.
-        codeBlock: false,
-      }),
+      StarterKit.configure({ codeBlock: false }),
       Typography,
       Placeholder.configure({
         placeholder: ({ node }) => {
@@ -103,7 +108,7 @@ export function Editor({ noteId }: Props) {
       CharacterCount,
       Focus,
       Markdown.configure({
-        html: false,
+        html: true,
         tightLists: true,
         bulletListMarker: "-",
         linkify: false,
@@ -112,6 +117,9 @@ export function Editor({ noteId }: Props) {
       WikiLink.configure({
         onNavigate: (id) => onNavigateRef.current(id),
         onCreateNote: (title) => onCreateNoteRef.current(title),
+      }),
+      Tag.configure({
+        onTagClick: (tag) => onTagClickRef.current(tag),
       }),
       SlashCommands,
       Callout,
@@ -123,7 +131,14 @@ export function Editor({ noteId }: Props) {
 
     onUpdate: ({ editor }) => {
       const store = editor.storage as unknown as Record<string, unknown>;
-      const md = (store["markdown"] as MarkdownStorage).getMarkdown();
+      let md = (store["markdown"] as MarkdownStorage).getMarkdown();
+      // tiptap-markdown escapes [ → \[ because brackets are markdown link syntax.
+      // Undo this globally so [[wikilinks]] survive the round-trip to disk.
+      // Actual link nodes are serialized separately by tiptap-markdown as
+      // [text](url), not as plain text, so they are unaffected by this.
+      // Only unescape [[wikilinks]] — not all brackets.
+      // tiptap-markdown escapes literal [ as \[ but [[Note]] becomes \[\[Note\]\].
+      md = md.replace(/\\\[\\\[([^\]]*)\\\]\\\]/g, "[[$1]]");
       scheduleSaveRef.current?.(md);
     },
 
@@ -135,12 +150,9 @@ export function Editor({ noteId }: Props) {
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0) { setBubbleRect(null); return; }
       const rect = sel.getRangeAt(0).getBoundingClientRect();
-      // Ignore zero-area rects (e.g. collapsed selection).
       if (rect.width === 0 && rect.height === 0) { setBubbleRect(null); return; }
       setBubbleRect(rect);
     },
-
-    onBlur: () => setBubbleRect(null),
 
     content: "",
   });
@@ -148,8 +160,21 @@ export function Editor({ noteId }: Props) {
   const { saveStatus, scheduleSave } = useNote(noteId, editor);
   scheduleSaveRef.current = scheduleSave;
 
-  // Register WikiLink dispatch so the async resolver can push meta transactions
-  // back into the editor view.
+  // Apply typography settings as CSS variables on the editor container.
+  useEffect(() => {
+    const el = document.querySelector<HTMLElement>(".editor-content");
+    if (!el) return;
+    el.style.setProperty("--editor-font-family", `'${typography.textFont}', Georgia, serif`);
+    el.style.setProperty("--editor-headings-font", `'${typography.headingsFont}', serif`);
+    el.style.setProperty("--editor-code-font", `'${typography.codeFont}', monospace`);
+    el.style.setProperty("--editor-font-size", `${typography.fontSize}px`);
+    el.style.setProperty("--editor-line-height", `${typography.lineHeight}`);
+    el.style.setProperty("--editor-max-width", `${typography.lineWidth}em`);
+    el.style.setProperty("--editor-paragraph-spacing", `${typography.paragraphSpacing}em`);
+    el.style.setProperty("--editor-paragraph-indent", `${typography.paragraphIndent}em`);
+  }, [typography]);
+
+  // Register WikiLink dispatch.
   useEffect(() => {
     if (!editor) return;
     registerWikiLinkDispatch((resolved) => {
@@ -160,29 +185,51 @@ export function Editor({ noteId }: Props) {
     return () => registerWikiLinkDispatch(() => {});
   }, [editor]);
 
-  // Register the /image slash command handler — opens a file picker then imports.
+  // Register /image slash command handler.
   useEffect(() => {
     registerImageRequestHandler(async () => {
       if (!editor || editor.isDestroyed) return;
       const selected = await open({
-        filters: [
-          {
-            name: "Images",
-            extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg"],
-          },
-        ],
+        filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg"] }],
         multiple: false,
       });
       if (!selected || typeof selected !== "string") return;
-      const opts = {
+      await insertFromPath(selected, editor, {
         vaultPath,
         getNoteId: () => noteIdRef.current,
         HTMLAttributes: {},
         allowBase64: false,
-      };
-      await insertFromPath(selected, editor, opts);
+      });
     });
   }, [editor, vaultPath]);
+
+  // Close menu on outside click.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [menuOpen]);
+
+  const activeNote = noteId ? (notes.find((n) => n.id === noteId) ?? null) : null;
+
+  const handlePin = useCallback(async () => {
+    if (!noteId || !activeNote) return;
+    setMenuOpen(false);
+    await pinNote(noteId, !activeNote.pinned);
+  }, [noteId, activeNote, pinNote]);
+
+  const handleDelete = useCallback(async () => {
+    if (!noteId) return;
+    setMenuOpen(false);
+    if (window.confirm("Delete this note? This cannot be undone.")) {
+      await deleteNote(noteId);
+    }
+  }, [noteId, deleteNote]);
 
   // Destroy editor on unmount.
   useEffect(() => () => { editor?.destroy(); }, [editor]);
@@ -201,7 +248,6 @@ export function Editor({ noteId }: Props) {
 
   return (
     <div className="editor-wrapper">
-      {/* Floating bubble menu — portal so it escapes overflow:hidden parents */}
       {editor && bubbleRect &&
         createPortal(
           <div
@@ -218,6 +264,29 @@ export function Editor({ noteId }: Props) {
           </div>,
           document.body
         )}
+
+      {/* Note actions menu */}
+      <div className="editor-actions" ref={menuRef}>
+        <button
+          className="editor-actions-btn"
+          title="More options"
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          <MoreHorizontal size={16} />
+        </button>
+        {menuOpen && (
+          <div className="editor-actions-menu">
+            <button className="editor-actions-item" onClick={handlePin}>
+              <Pin size={14} />
+              {activeNote?.pinned ? "Unpin note" : "Pin note"}
+            </button>
+            <button className="editor-actions-item editor-actions-item--danger" onClick={handleDelete}>
+              <Trash2 size={14} />
+              Delete note
+            </button>
+          </div>
+        )}
+      </div>
 
       <EditorContent editor={editor} className="editor-content" />
 

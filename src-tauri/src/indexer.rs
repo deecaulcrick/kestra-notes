@@ -17,7 +17,7 @@ use std::{
 };
 use tauri::Emitter;
 
-use crate::{commands::notes::extract_title, db::DbPool, wikilinks};
+use crate::{commands::notes::{extract_title, extract_preview, index_tags}, db::DbPool, wikilinks};
 
 /// Start a file-system watcher for `{vault_path}/notes/`.
 ///
@@ -125,6 +125,12 @@ fn index_changed_files(paths: &[PathBuf], vault_path: &PathBuf, pool: &DbPool) {
             Ok(c) => c,
             Err(e) => { eprintln!("[indexer] read error {}: {e}", path.display()); continue; }
         };
+        // Normalize escaped brackets written by older tiptap-markdown versions.
+        let content = if content.contains("\\[") {
+            content.replace("\\[", "[").replace("\\]", "]")
+        } else {
+            content
+        };
 
         let stem = path
             .file_stem()
@@ -158,10 +164,13 @@ fn index_changed_files(paths: &[PathBuf], vault_path: &PathBuf, pool: &DbPool) {
             .optional()
             .unwrap_or(None);
 
+        let preview = extract_preview(&content);
+        let has_todos = content.contains("- [ ]") as i64;
+
         let note_id = if let Some(id) = existing_id {
             conn.execute(
-                "UPDATE notes SET title=?1, updated_at=?2, file_hash=?3 WHERE id=?4",
-                rusqlite::params![title, updated_at, file_hash, id],
+                "UPDATE notes SET title=?1, preview=?2, has_todos=?3, updated_at=?4, file_hash=?5 WHERE id=?6",
+                rusqlite::params![title, preview, has_todos, updated_at, file_hash, id],
             ).ok();
             id
         } else {
@@ -173,17 +182,18 @@ fn index_changed_files(paths: &[PathBuf], vault_path: &PathBuf, pool: &DbPool) {
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0);
             conn.execute(
-                "INSERT INTO notes (id, file_path, title, created_at, updated_at, file_hash)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                rusqlite::params![id, rel, title, created_at, updated_at, file_hash],
+                "INSERT INTO notes (id, file_path, title, preview, has_todos, created_at, updated_at, file_hash)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                rusqlite::params![id, rel, title, preview, has_todos, created_at, updated_at, file_hash],
             ).ok();
             id
         };
 
-        // Re-index wikilinks + FTS.
+        // Re-index wikilinks + FTS + tags.
         if let Err(e) = wikilinks::index_note(&note_id, &title, &content, &conn) {
             eprintln!("[indexer] wikilink index error for {}: {e}", path.display());
         }
+        index_tags(&note_id, &content, &conn);
     }
 }
 

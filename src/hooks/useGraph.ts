@@ -17,12 +17,10 @@ export function useGraph(noteId: string | null): GraphData {
   const [backlinks, setBacklinks] = useState<BacklinkNote[]>([]);
   const [outbound, setOutbound] = useState<OutboundLink[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  // Bump this to force a re-fetch without changing noteId.
   const [refreshTick, setRefreshTick] = useState(0);
   const noteIdRef = useRef(noteId);
   noteIdRef.current = noteId;
 
-  // Re-fetch whenever the file watcher signals a change.
   useEffect(() => {
     const unlisten = listen("notes://changed", () => {
       setRefreshTick((t) => t + 1);
@@ -40,25 +38,19 @@ export function useGraph(noteId: string | null): GraphData {
     let cancelled = false;
     setIsLoading(true);
 
-    Promise.all([getBacklinks(noteId), getOutboundLinks(noteId)])
-      .then(([bl, ob]) => {
-        if (cancelled) return;
-        setBacklinks(bl);
-        setOutbound(ob);
+    getBacklinks(noteId)
+      .then((bl) => {
+        console.log("[useGraph] backlinks for", noteId, "->", bl);
+        if (!cancelled) setBacklinks(bl);
       })
-      .catch(() => {
-        if (!cancelled) {
-          setBacklinks([]);
-          setOutbound([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+      .catch((err) => console.error("[useGraph] getBacklinks error:", err));
 
-    return () => {
-      cancelled = true;
-    };
+    getOutboundLinks(noteId)
+      .then((ob) => { if (!cancelled) setOutbound(ob); })
+      .catch((err) => console.error("[useGraph] getOutboundLinks error:", err))
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+
+    return () => { cancelled = true; };
   }, [noteId, refreshTick]);
 
   return { backlinks, outbound, isLoading };

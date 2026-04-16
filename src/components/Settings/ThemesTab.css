@@ -1,0 +1,117 @@
+.themes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.theme-card {
+  position: relative;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  background: transparent;
+  transition: border-color 0.15s;
+  overflow: hidden;
+}
+
+.theme-card:hover {
+  border-color: var(--border-strong);
+}
+
+.theme-card--active {
+  border-color: var(--accent);
+}
+
+.theme-card--pro {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.theme-card-pro-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 5px;
+  z-index: 1;
+}
+
+/* The preview area renders using the theme's own CSS variables */
+.theme-card-preview {
+  padding: 12px 14px 10px;
+  background: var(--bg-primary, #fff);
+}
+
+/* Override preview vars per-theme so each card looks like its theme */
+.theme-card[data-theme="light"] .theme-card-preview {
+  --bg-primary: #FFFFFF;
+  --text-primary: #1A1916;
+  --text-secondary: #6B6860;
+  --accent: #CC3F3F;
+}
+.theme-card[data-theme="dark-graphite"] .theme-card-preview {
+  --bg-primary: #252525;
+  --text-primary: #E8E6E1;
+  --text-secondary: #9E9B95;
+  --accent: #CC3F3F;
+}
+.theme-card[data-theme="high-contrast"] .theme-card-preview {
+  --bg-primary: #FFFFFF;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --accent: #CC3F3F;
+}
+.theme-card[data-theme="charcoal"] .theme-card-preview {
+  --bg-primary: #323232;
+  --text-primary: #D4D0C8;
+  --text-secondary: #8A8680;
+  --accent: #CC3F3F;
+}
+.theme-card[data-theme="solarized-light"] .theme-card-preview {
+  --bg-primary: #FDF6E3;
+  --text-primary: #073642;
+  --text-secondary: #586E75;
+  --accent: #268BD2;
+}
+.theme-card[data-theme="solarized-dark"] .theme-card-preview {
+  --bg-primary: #073642;
+  --text-primary: #FDF6E3;
+  --text-secondary: #93A1A1;
+  --accent: #268BD2;
+}
+
+.theme-preview-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.theme-preview-body {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.theme-preview-body strong { color: var(--text-primary); }
+.theme-preview-body em { color: var(--accent); font-style: italic; }
+
+.theme-card-label {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border);
+}
+
+.theme-card--active .theme-card-label {
+  color: var(--accent);
+}

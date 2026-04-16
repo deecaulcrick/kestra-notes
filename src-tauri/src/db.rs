@@ -30,11 +30,38 @@ pub fn init_db(vault_path: &Path) -> Result<DbPool, AppError> {
 }
 
 fn run_migrations(conn: &Connection) -> Result<(), AppError> {
-    // Enable WAL mode for better concurrent read/write performance.
     conn.execute_batch("PRAGMA journal_mode=WAL;")?;
-    // Enforce foreign key constraints.
     conn.execute_batch("PRAGMA foreign_keys=ON;")?;
-    // Run the schema (all statements use IF NOT EXISTS — safe to re-run).
+    // Create any missing tables (all use IF NOT EXISTS — safe to re-run).
     conn.execute_batch(SCHEMA_SQL)?;
+    // Additive column migrations — SQLite ignores these if the column already exists
+    // would error, so we check first and add only when missing.
+    add_column_if_missing(conn, "notes", "preview",   "TEXT DEFAULT ''")?;
+    add_column_if_missing(conn, "notes", "has_todos", "INTEGER DEFAULT 0")?;
+    add_column_if_missing(conn, "notes", "pinned",    "INTEGER DEFAULT 0")?;
+    Ok(())
+}
+
+/// Add a column to a table if it doesn't already exist.
+/// SQLite doesn't support `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, so we
+/// inspect `PRAGMA table_info` first.
+fn add_column_if_missing(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    definition: &str,
+) -> Result<(), AppError> {
+    let exists: bool = {
+        let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+        let cols: Vec<String> = stmt
+            .query_map([], |row| row.get::<_, String>(1))?
+            .collect::<Result<_, _>>()?;
+        cols.iter().any(|c| c == column)
+    };
+    if !exists {
+        conn.execute_batch(&format!(
+            "ALTER TABLE {table} ADD COLUMN {column} {definition};"
+        ))?;
+    }
     Ok(())
 }

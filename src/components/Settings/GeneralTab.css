@@ -1,0 +1,110 @@
+.general-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.general-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.general-section-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin: 0 0 8px;
+  padding: 0 0 0 0;
+  /* Outside the border section */
+}
+
+.general-section { margin-top: 4px; }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+
+.toggle-row:last-child { border-bottom: none; }
+.toggle-row:hover { background: var(--surface-hover); }
+
+.toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-label {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.toggle-desc {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+.toggle-input {
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  appearance: none;
+  background: var(--border-strong);
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.toggle-input::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+}
+
+.toggle-input:checked {
+  background: var(--accent);
+}
+
+.toggle-input:checked::after {
+  transform: translateX(16px);
+}
+
+.select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.select-row:last-child { border-bottom: none; }
+
+.general-select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: inherit;
+}

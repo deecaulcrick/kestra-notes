@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useNoteStore } from "./store/noteStore";
 import { Library } from "./views/Library";
@@ -10,23 +9,12 @@ export default function App() {
   const isLoading = useNoteStore((s) => s.isLoading);
   const error = useNoteStore((s) => s.error);
   const openVault = useNoteStore((s) => s.openVault);
-  const loadNotes = useNoteStore((s) => s.loadNotes);
 
   // On first launch, try to reopen the last vault from localStorage.
   useEffect(() => {
     const lastPath = localStorage.getItem("lastVaultPath");
-    if (lastPath) {
-      openVault(lastPath);
-    }
+    if (lastPath) void openVault(lastPath);
   }, []);
-
-  // Refresh the note list whenever the file watcher detects external changes.
-  useEffect(() => {
-    const unlisten = listen("notes://changed", () => {
-      void loadNotes();
-    });
-    return () => { void unlisten.then((fn) => fn()); };
-  }, [loadNotes]);
 
   // Persist vault path whenever it changes.
   useEffect(() => {
@@ -37,14 +25,10 @@ export default function App() {
 
   async function handleOpenVault() {
     const selected = await open({ directory: true, multiple: false });
-    if (selected) {
-      await openVault(selected as string);
-    }
+    if (selected) await openVault(selected as string);
   }
 
-  if (workspace) {
-    return <Library />;
-  }
+  if (workspace) return <Library />;
 
   return (
     <div className="vault-picker">

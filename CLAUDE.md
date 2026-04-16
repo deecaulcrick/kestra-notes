@@ -26,6 +26,492 @@ Think: the writing quality of Bear, the local file model of Obsidian, rebuilt fr
 
 ---
 
+## UI layout — reference: Bear notes
+
+The visual and interaction reference is Bear (macOS). Study it. Every layout decision should ask: "does this feel as clean as Bear?"
+
+### The 3-pane shell
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ┌──────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
+│  │          │  │              │  │                          │  │
+│  │ Sidebar  │  │  Note list   │  │       Editor             │  │
+│  │  ~220px  │  │   ~280px     │  │     (flex: 1)            │  │
+│  │          │  │              │  │                          │  │
+│  │          │  │              │  │ ──────────────────────── │  │
+│  │          │  │              │  │  Backlinks panel         │  │
+│  │          │  │              │  │  (collapsible, ~240px)   │  │
+│  └──────────┘  └──────────────┘  └──────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+All three panes are always rendered. The sidebar and note list can be collapsed independently. The editor + backlinks panel share the right column, with backlinks collapsing from the bottom.
+
+### Sidebar — left pane (~220px)
+
+Structure exactly mirrors Bear's sidebar:
+
+**System sections** (always present, in this order):
+- Notes (all notes)
+- Untagged
+- Todo (notes with `[ ]` task items)
+- Today (notes modified today)
+- Locked (v2 — stub entry, show lock icon, no functionality)
+- Pinned
+- Trash
+
+**Vault/folder section** (below a divider):
+- Shows the vault name as a collapsible group header
+- Lists subfolders as nested items with disclosure triangles
+- Tags appear as `#tagname` with nested subtags as children (e.g. `#bear` → `welcome` subtag as seen in screenshots)
+
+**Bottom of sidebar:**
+- Settings gear icon
+- New note button (or use top toolbar)
+
+**Sidebar behaviour:**
+- Clicking a system section filters the note list accordingly
+- Clicking a folder shows notes in that folder
+- Clicking a tag shows all notes with that tag
+- Selected item has a subtle background highlight (the red/accent highlight in Bear's screenshots)
+- Sidebar is collapsible — clicking the leftmost toggle or pressing `Cmd+Shift+1` hides it, note list slides left
+
+### Note list — middle pane (~280px)
+
+Each note card in the list shows:
+- **Title** — bold, truncated to one line
+- **Preview text** — 2 lines of the note body, muted color, truncated
+- **Timestamp** — relative time ("6 seconds ago", "15 minutes ago", "15 hours ago") — update live
+- **Image thumbnails** — if the note contains images, show up to 2 small inline thumbnails (as seen in Bear screenshots, ~70px wide, rounded corners)
+- **Tag pills** — optionally show tag names as small inline chips
+
+**Sorting:** Default sort is by `updated_at` descending (most recently modified first). Allow user to change sort in a top-right dropdown.
+
+**Filtering:** When a search is active, show matching notes with the search term highlighted in the preview.
+
+**Note list header:**
+- Shows the current section name ("Notes", tag name, folder name)
+- Right side: new note icon (pencil) + search icon
+- On search icon click, expand an inline search bar at the top of the list
+
+**Selected note:** highlighted with a left-side accent border (like Bear's red left border on selected note).
+
+### Editor — right pane
+
+- Takes all remaining horizontal space (`flex: 1`)
+- Minimal chrome — no visible toolbar by default
+- Top right corner: **B I U** formatting buttons (visible but subtle, like Bear) + info icon (ℹ️) + overflow menu (⋯)
+- Editor content area is max-width constrained and centered (see Editor Configuration section)
+- Note title is the first H1 in the document — not a separate input field
+- Below the editor content: status bar (word count, reading time, last saved)
+
+### Backlinks panel — collapsible bottom of right pane
+
+- Lives below the editor in the same right column
+- Separated by a thin horizontal divider with a collapse toggle (chevron)
+- Default state: **collapsed** (show only the divider + "X backlinks" label)
+- Expanded: shows a list of note cards that link to this note, each with title + short preview
+- Expand/collapse with the chevron or by clicking the divider label
+- Keyboard shortcut: `Cmd+Shift+B` toggles
+
+When collapsed:
+```
+──── 3 backlinks  ›  ────────────────────────────────
+```
+
+When expanded:
+```
+──── 3 backlinks  ‹  ────────────────────────────────
+  My other note          "...see [[this note]] for..."
+  Research notes         "...referenced in [[this note]]..."
+  Project planning       "...links back to [[this note]]..."
+──────────────────────────────────────────────────────
+```
+
+### Pane collapse behaviour
+
+| Action | Result |
+|---|---|
+| `Cmd+Shift+1` | Toggle sidebar |
+| `Cmd+Shift+2` | Toggle note list (enter "focus" mode — just editor) |
+| `Cmd+Shift+B` | Toggle backlinks panel |
+| Click sidebar toggle (top left) | Collapse sidebar |
+| Click note list toggle | Collapse note list |
+
+When both sidebar and note list are collapsed, the editor takes the full window. This is "focus mode" — Bear does this when you click a note in the compact view (screenshot 6 shows the sidebar collapsed to just show "bear" label at top).
+
+---
+
+## Theming system
+
+### Architecture
+
+Themes are implemented as CSS custom property sets applied to the root `<html>` element. Each theme is a named set of CSS variable overrides. Switching themes = swapping a data attribute and persisting the choice.
+
+```typescript
+// src/store/themeStore.ts
+type ThemeId = 'light' | 'dark-graphite' | 'high-contrast' | 'charcoal' | 'solarized-light' | 'solarized-dark'
+
+interface ThemeStore {
+  activeTheme: ThemeId
+  setTheme: (id: ThemeId) => void
+}
+```
+
+Apply theme by setting `data-theme` on `<html>`:
+```typescript
+document.documentElement.setAttribute('data-theme', themeId)
+```
+
+Persist to `settings.json` in the vault `.app/` folder via a Tauri command.
+
+### V1 themes (matching Bear's set)
+
+| Theme ID | Light/Dark | Description |
+|---|---|---|
+| `light` | Light | Default — warm white, subtle warm grays |
+| `dark-graphite` | Dark | Default dark — deep neutral grays |
+| `high-contrast` | Light | Pure white bg, near-black text, maximum contrast |
+| `charcoal` | Dark | PRO — rich charcoal tones |
+| `solarized-light` | Light | PRO — warm cream background |
+| `solarized-dark` | Dark | PRO — teal-tinted dark background |
+
+Mark PRO themes with a badge in the UI — they are selectable but show a "coming soon" message (don't lock them out entirely, just indicate they require a future paid tier).
+
+### CSS variable structure
+
+Define all theme variables in `src/styles/themes.css`:
+
+```css
+/* Base theme (light) */
+[data-theme="light"] {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F7F6F3;
+  --bg-tertiary: #EFEDE8;
+  --text-primary: #1A1916;
+  --text-secondary: #6B6860;
+  --text-tertiary: #A8A69F;
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.15);
+  --accent: #CC3F3F;          /* Bear's red — use for selected states, links */
+  --accent-subtle: #FAE8E8;
+  --sidebar-bg: #EFEDE8;
+  --notelist-bg: #F7F6F3;
+  --editor-bg: #FFFFFF;
+  --scrollbar: rgba(0,0,0,0.12);
+}
+
+[data-theme="dark-graphite"] {
+  --bg-primary: #1E1E1E;
+  --bg-secondary: #252525;
+  --bg-tertiary: #2C2C2C;
+  --text-primary: #E8E6E1;
+  --text-secondary: #9E9B95;
+  --text-tertiary: #6B6860;
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.15);
+  --accent: #CC3F3F;
+  --accent-subtle: rgba(204,63,63,0.15);
+  --sidebar-bg: #1A1A1A;
+  --notelist-bg: #1E1E1E;
+  --editor-bg: #252525;
+  --scrollbar: rgba(255,255,255,0.12);
+}
+
+[data-theme="high-contrast"] {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F0F0F0;
+  --bg-tertiary: #E0E0E0;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --text-tertiary: #666666;
+  --border: rgba(0,0,0,0.2);
+  --border-strong: rgba(0,0,0,0.4);
+  --accent: #CC3F3F;
+  --accent-subtle: #FFE0E0;
+  --sidebar-bg: #F0F0F0;
+  --notelist-bg: #F8F8F8;
+  --editor-bg: #FFFFFF;
+  --scrollbar: rgba(0,0,0,0.2);
+}
+
+[data-theme="solarized-light"] {
+  --bg-primary: #FDF6E3;
+  --bg-secondary: #EEE8D5;
+  --bg-tertiary: #E5DFD0;
+  --text-primary: #073642;
+  --text-secondary: #586E75;
+  --text-tertiary: #839496;
+  --border: rgba(7,54,66,0.1);
+  --border-strong: rgba(7,54,66,0.2);
+  --accent: #268BD2;
+  --accent-subtle: rgba(38,139,210,0.12);
+  --sidebar-bg: #EEE8D5;
+  --notelist-bg: #F5EFDA;
+  --editor-bg: #FDF6E3;
+  --scrollbar: rgba(7,54,66,0.15);
+}
+
+[data-theme="charcoal"] {
+  --bg-primary: #2B2B2B;
+  --bg-secondary: #323232;
+  --bg-tertiary: #3A3A3A;
+  --text-primary: #D4D0C8;
+  --text-secondary: #8A8680;
+  --text-tertiary: #5E5B56;
+  --border: rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.12);
+  --accent: #CC3F3F;
+  --accent-subtle: rgba(204,63,63,0.15);
+  --sidebar-bg: #252525;
+  --notelist-bg: #2B2B2B;
+  --editor-bg: #323232;
+  --scrollbar: rgba(255,255,255,0.1);
+}
+
+[data-theme="solarized-dark"] {
+  --bg-primary: #002B36;
+  --bg-secondary: #073642;
+  --bg-tertiary: #0D4050;
+  --text-primary: #FDF6E3;
+  --text-secondary: #93A1A1;
+  --text-tertiary: #657B83;
+  --border: rgba(253,246,227,0.08);
+  --border-strong: rgba(253,246,227,0.15);
+  --accent: #268BD2;
+  --accent-subtle: rgba(38,139,210,0.15);
+  --sidebar-bg: #00212B;
+  --notelist-bg: #002B36;
+  --editor-bg: #073642;
+  --scrollbar: rgba(253,246,227,0.12);
+}
+```
+
+Use `var(--bg-primary)`, `var(--text-primary)` etc. everywhere in components. Never hardcode colors outside `themes.css`.
+
+### Settings panel — Themes tab
+
+Render theme options as visual cards (matching Bear's screenshot exactly):
+- 2-column grid of theme cards
+- Each card shows the theme name, a preview of the typography with sample text ("Lorem ipsum **dolor sit amet**, consectetur adipiscing elit. Mauris iaculis *semper* pharetra.")
+- Card background and text use the actual theme colors — it IS the preview
+- Selected theme has a colored border (accent color)
+- PRO themes show a "PRO" badge chip in the top right corner
+- Clicking a non-PRO theme applies it immediately
+
+### Settings panel — Typography tab
+
+Matching Bear's Typography settings panel exactly:
+
+**Font selectors** (shown as "Aa FontName" buttons):
+- Text Font — body font for note content (default: Lora)
+- Headings Font — heading font (default: Fraunces)
+- Code Font — monospace for code blocks (default: JetBrains Mono)
+
+Clicking a font button opens a font picker dropdown with available options.
+
+**Sliders** (all with live preview — changes apply instantly to the editor):
+- Font Size — range 12–24pt, default 17pt
+- Line Height — range 1.2–2.0em, default 1.75em
+- Line Width — range 36–80em, default 48em (controls max-width of editor content)
+- Paragraph Spacing — range 0–2em, default 0em
+- Paragraph Indent — range 0–3em, default 0em
+
+All slider values update CSS variables on the editor in real time. Persist to `settings.json`.
+
+**Reset button:** "Restore Editor Defaults" — resets all sliders and fonts to defaults.
+
+Store typography settings in Zustand + persist to `settings.json`:
+```typescript
+interface TypographySettings {
+  textFont: string        // 'Lora'
+  headingsFont: string    // 'Fraunces'
+  codeFont: string        // 'JetBrains Mono'
+  fontSize: number        // 17
+  lineHeight: number      // 1.75
+  lineWidth: number       // 48  (em units)
+  paragraphSpacing: number // 0
+  paragraphIndent: number  // 0
+}
+```
+
+Apply as inline CSS variables on the editor container:
+```typescript
+editorEl.style.setProperty('--editor-font-size', `${settings.fontSize}px`)
+editorEl.style.setProperty('--editor-line-height', `${settings.lineHeight}`)
+editorEl.style.setProperty('--editor-max-width', `${settings.lineWidth}em`)
+```
+
+### Settings panel — General tab
+
+Matching Bear's General settings:
+
+**Editor toggles** (checkboxes):
+- Hide Markdown (show formatted output, not raw syntax) — default ON
+- Auto-fill titles when pasting web links — default ON
+- Autocomplete tags, WikiLinks, emoji — default ON
+- Automatically sort todos upon completion — default OFF
+- Keep tags during export — default ON
+
+**Dropdowns:**
+- Create new notes with: [Heading 1 | Heading 2 | Empty]
+- Add tags at: [Bottom of note | Top of note]
+
+**Keyboard shortcuts:**
+- Open main window: [Record Shortcut]
+- Create a new note: [Record Shortcut]
+
+---
+
+## Tag system
+
+Tags in markdown use `#tagname` syntax inline in the note body. They are NOT frontmatter — they live in the prose itself, just like Bear.
+
+### Tag syntax rules
+
+- `#tagname` — single tag
+- `#tag/subtag` — nested tag (creates parent `#tag` with child `subtag` in sidebar)
+- Tags are alphanumeric + hyphens + underscores + forward slashes (for nesting)
+- Tags must not start with a number
+- Tags are case-insensitive (stored lowercase)
+- A tag appearing anywhere in the note body (including inside headings, lists, or paragraphs) counts
+
+### Tags in the DB
+
+Add to the schema:
+
+```sql
+CREATE TABLE tags (
+  id          TEXT PRIMARY KEY,
+  name        TEXT UNIQUE NOT NULL,   -- full tag name, e.g. "project/work"
+  parent_name TEXT                    -- "project" for "project/work", NULL for root tags
+);
+
+CREATE TABLE note_tags (
+  note_id     TEXT NOT NULL,
+  tag_id      TEXT NOT NULL,
+  PRIMARY KEY (note_id, tag_id)
+);
+```
+
+The indexer extracts tags from note content during the index pass and keeps `note_tags` in sync.
+
+### Tags Tauri commands
+
+- `get_tags(workspace_id: string)` → `Tag[]` — all tags, with note count
+- `get_notes_by_tag(tag_name: string)` → `Note[]`
+- `rename_tag(old_name: string, new_name: string)` → `void` — updates all notes on disk + DB
+- `delete_tag(name: string)` → `void` — removes tag from all notes on disk
+
+### Tag rendering in Tiptap
+
+Tags typed as `#tagname` in the editor should be recognised and rendered as styled inline chips — same visual treatment as Bear's red tag links. Implement as a custom Tiptap `Mark` extension:
+
+```typescript
+// extensions/Tag.ts
+const Tag = Mark.create({
+  name: 'tag',
+  parseHTML() {
+    return [{ tag: 'span[data-tag]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', { ...HTMLAttributes, 'data-tag': true, class: 'note-tag' }, 0]
+  },
+  addInputRules() {
+    return [
+      markInputRule({
+        find: /#([\w\-_\/]+)/,
+        type: this.type,
+      })
+    ]
+  }
+})
+```
+
+Style `.note-tag` to match the accent color. Clicking a tag in the editor navigates the sidebar to that tag's note list.
+
+### Sidebar tag display
+
+Tags appear in the sidebar below the folder list, grouped under a "Tags" header:
+- Root tags shown at the top level with `#` prefix
+- Nested tags shown as indented children (disclosure triangle to expand/collapse)
+- Each tag shows its note count in a muted badge on the right
+- Tags sorted alphabetically within each level
+
+---
+
+## Updated SQLite schema
+
+Add tags tables to the schema from before:
+
+```sql
+-- (all previous tables remain) --
+
+CREATE TABLE tags (
+  id          TEXT PRIMARY KEY,
+  name        TEXT UNIQUE NOT NULL,
+  parent_name TEXT
+);
+
+CREATE TABLE note_tags (
+  note_id     TEXT NOT NULL,
+  tag_id      TEXT NOT NULL,
+  PRIMARY KEY (note_id, tag_id)
+);
+```
+
+---
+
+## Updated project structure
+
+```
+src/
+  styles/
+    themes.css             ← all theme CSS variable sets
+    base.css               ← reset, global base styles
+  views/
+    Library.tsx            ← 3-pane layout shell
+    Canvas.tsx             ← infinite spatial view
+  components/
+    Layout/
+      ThreePaneShell.tsx   ← manages pane widths, collapse state
+      PaneResizer.tsx      ← drag handle between panes
+    Sidebar/
+      Sidebar.tsx          ← left pane container
+      SystemSection.tsx    ← Notes, Untagged, Todo, Today, Trash etc.
+      FolderTree.tsx       ← vault folder hierarchy
+      TagTree.tsx          ← #tag hierarchy with nesting
+    NoteList/
+      NoteList.tsx         ← middle pane container
+      NoteCard.tsx         ← individual note preview card
+      NoteListHeader.tsx   ← section title + new/search buttons
+    Editor/
+      Editor.tsx
+      extensions/
+        WikiLink.ts
+        SlashCommands.ts
+        Callout.ts
+        ImageUpload.ts
+        Tag.ts             ← #tag mark extension
+      EditorToolbar.tsx
+      EditorStyles.css
+    BacklinksPanel/
+      BacklinksPanel.tsx   ← collapsible bottom panel
+      BacklinkCard.tsx     ← individual backlink preview
+    Settings/
+      SettingsModal.tsx    ← modal container with tab nav
+      GeneralTab.tsx
+      TypographyTab.tsx
+      ThemesTab.tsx        ← theme picker grid
+  store/
+    noteStore.ts
+    themeStore.ts          ← active theme + typography settings
+    uiStore.ts             ← pane collapse state, sidebar selection
+```
+
+---
+
 ## Tech stack
 
 | Layer | Choice | Notes |
@@ -665,7 +1151,6 @@ Configure in `src/components/Editor/EditorStyles.css`. The editor content area s
 
 /* Headings — contrasting sans-serif for visual hierarchy */
 .tiptap h1 {
-  font-family: 'Fraunces', serif;
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.2;
@@ -673,7 +1158,6 @@ Configure in `src/components/Editor/EditorStyles.css`. The editor content area s
   letter-spacing: -0.03em;
 }
 .tiptap h2 {
-  font-family: 'Fraunces', serif;
   font-size: 1.4rem;
   font-weight: 600;
   line-height: 1.3;
@@ -681,7 +1165,6 @@ Configure in `src/components/Editor/EditorStyles.css`. The editor content area s
   letter-spacing: -0.02em;
 }
 .tiptap h3 {
-  font-family: 'Fraunces', serif;
   font-size: 1.15rem;
   font-weight: 600;
   margin: 1.5rem 0 0.3rem;
@@ -695,7 +1178,33 @@ Configure in `src/components/Editor/EditorStyles.css`. The editor content area s
 .tiptap li { margin: 0.25rem 0; }
 
 /* Task list */
-.tiptap ul[data-type="taskList"] { list-style: none; padding-left: 0.25rem; }
+.tiptap ul[data-type="taskList"] { list-style: none;
+    margin-left: 0;
+    padding: 0;
+
+    li {
+      align-items: flex-start;
+      display: flex;
+
+      > label {
+        flex: 0 0 auto;
+        margin-right: 0.5rem;
+        user-select: none;
+      }
+
+      > div {
+        flex: 1 1 auto;
+      }
+    }
+
+    input[type='checkbox'] {
+      cursor: pointer;
+    }
+
+    ul[data-type='taskList'] {
+      margin: 0;
+    }
+ }
 .tiptap li[data-type="taskItem"] { display: flex; align-items: flex-start; gap: 0.5rem; }
 .tiptap li[data-type="taskItem"] > label { margin-top: 3px; }
 .tiptap li[data-type="taskItem"][data-checked="true"] > div {
@@ -815,12 +1324,6 @@ Configure in `src/components/Editor/EditorStyles.css`. The editor content area s
 .tiptap .selectedCell { background: var(--color-background-info); }
 ```
 
-**Fonts to load** (via Google Fonts or local files):
-- `Lora` — body text (400, 400 italic, 600)
-- `Fraunces` — headings (600, 700) — a beautiful optical-size serif with personality
-- `JetBrains Mono` — code blocks (400, 400 italic)
-
-Load these in `index.html` via `<link rel="preconnect">` + `<link rel="stylesheet">` from Google Fonts, or bundle them locally for offline use.
 
 ### Status bar
 
@@ -1069,3 +1572,7 @@ image: (state, node) => {
 | Tauri asset protocol not file:// | Security — Tauri's webview restricts arbitrary file:// access by default. |
 | Fraunces + Lora for typography | Distinctive, warm editorial feel. Not generic Inter/Roboto. |
 | Dated filenames on import | Avoids collisions when the same filename is imported multiple times. |
+| CSS variables for theming | Themes are a data-attribute swap, not a re-render. Instant switching, no flash. |
+| Tags inline in body not frontmatter | Matches Bear's model. Tags are visible in the prose, not hidden metadata. |
+| Backlinks collapsible from bottom | Keeps the editor full-height by default. Backlinks are contextual, not always needed. |
+| Typography settings as CSS vars | Live preview with zero re-renders — slider moves, editor updates instantly. |

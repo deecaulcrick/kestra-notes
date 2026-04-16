@@ -34,12 +34,18 @@ pub fn run() {
             commands::notes::save_note,
             commands::notes::create_note,
             commands::notes::list_notes,
+            commands::notes::pin_note,
+            commands::notes::delete_note,
             commands::notes::resolve_wikilinks,
             commands::attachments::import_attachment,
             commands::attachments::import_attachment_data,
             commands::graph::get_backlinks,
             commands::graph::get_outbound_links,
             commands::search::search,
+            commands::tags::get_tags,
+            commands::tags::get_notes_by_tag,
+            commands::settings::get_settings,
+            commands::settings::save_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

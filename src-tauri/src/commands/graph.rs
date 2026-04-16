@@ -3,6 +3,7 @@ use tauri::State;
 
 use crate::{error::AppError, AppState};
 
+
 #[derive(Debug, Serialize)]
 pub struct BacklinkNote {
     pub id: String,
@@ -27,6 +28,19 @@ pub async fn get_backlinks(
     let pool = db_guard.as_ref().ok_or(AppError::VaultNotOpen)?;
     let conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
+    // DEBUG
+    {
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM backlinks", [], |r| r.get(0)).unwrap_or(0);
+        let ol_count: i64 = conn.query_row("SELECT COUNT(*) FROM outbound_links", [], |r| r.get(0)).unwrap_or(0);
+        println!("[get_backlinks] called for id={}", &id[..8.min(id.len())]);
+        println!("[get_backlinks] backlinks table has {} rows, outbound_links has {} rows", count, ol_count);
+        let mut s = conn.prepare("SELECT source_id, link_text, resolved_id FROM outbound_links").unwrap();
+        let rows: Vec<(String,String,Option<String>)> = s.query_map([], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap().filter_map(|r|r.ok()).collect();
+        for (src, lt, rid) in &rows {
+            println!("  outbound: {} [[{}]] -> {:?}", &src[..8.min(src.len())], lt, rid.as_deref().map(|s| &s[..8.min(s.len())]));
+        }
+    }
+
     let mut stmt = conn.prepare(
         "SELECT n.id, COALESCE(n.title, 'Untitled'), n.file_path
          FROM backlinks b
@@ -44,6 +58,9 @@ pub async fn get_backlinks(
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
+
+    println!("[get_backlinks] returning {} notes for target={}", notes.len(), &id[..8.min(id.len())]);
+    for n in &notes { println!("  <- '{}' ({})", n.title, &n.id[..8.min(n.id.len())]); }
 
     Ok(notes)
 }

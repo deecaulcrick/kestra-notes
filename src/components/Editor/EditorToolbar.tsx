@@ -6,7 +6,11 @@ interface Props {
 
 export function EditorToolbar({ editor }: Props) {
   return (
-    <div className="bubble-menu">
+    <div
+      className="bubble-menu"
+      // Prevent any mousedown inside the toolbar from blurring the editor.
+      onMouseDown={(e) => e.preventDefault()}
+    >
       <ToolbarButton
         label="Bold"
         active={editor.isActive("bold")}

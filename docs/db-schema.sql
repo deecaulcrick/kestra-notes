@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS notes (
   id          TEXT PRIMARY KEY,        -- nanoid, stable across renames
   file_path   TEXT UNIQUE NOT NULL,    -- relative to vault root
   title       TEXT,
+  preview     TEXT,                    -- first non-heading line for note list display
+  has_todos   INTEGER DEFAULT 0,       -- 1 if note contains unchecked task items
   created_at  INTEGER,
   updated_at  INTEGER,
   file_hash   TEXT
@@ -61,9 +63,24 @@ CREATE TABLE IF NOT EXISTS sync_state (
   conflict      INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS tags (
+  id          TEXT PRIMARY KEY,
+  name        TEXT UNIQUE NOT NULL,   -- full tag, e.g. "project/work"
+  parent_name TEXT                    -- "project" for "project/work", NULL for roots
+);
+
+CREATE TABLE IF NOT EXISTS note_tags (
+  note_id     TEXT NOT NULL,
+  tag_id      TEXT NOT NULL,
+  PRIMARY KEY (note_id, tag_id)
+);
+
 -- Indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_notes_file_path ON notes(file_path);
 CREATE INDEX IF NOT EXISTS idx_notes_title ON notes(title);
 CREATE INDEX IF NOT EXISTS idx_backlinks_target ON backlinks(target_id);
 CREATE INDEX IF NOT EXISTS idx_outbound_source ON outbound_links(source_id);
 CREATE INDEX IF NOT EXISTS idx_attachments_note ON attachments(note_id);
+CREATE INDEX IF NOT EXISTS idx_note_tags_note ON note_tags(note_id);
+CREATE INDEX IF NOT EXISTS idx_note_tags_tag ON note_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_tags_parent ON tags(parent_name);

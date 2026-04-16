@@ -5,10 +5,6 @@
 
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
-/**
- * Convert an absolute vault file path to a URL the Tauri webview can load.
- * Never use file:// directly — Tauri's CSP blocks it.
- */
 export function assetUrl(absolutePath: string): string {
   return convertFileSrc(absolutePath);
 }
@@ -24,20 +20,77 @@ export interface Workspace {
 
 export interface Note {
   id: string;
-  file_path: string; // relative to vault root, e.g. "notes/my-note.md"
+  file_path: string;
   title: string;
+  preview: string;
+  has_todos: boolean;
+  pinned: boolean;
   created_at: number;
   updated_at: number;
+  tags: string[];
 }
 
 export interface NoteDetail {
   id: string;
   title: string;
-  content: string; // raw markdown
+  content: string;
   updated_at: number;
 }
 
-// ── Vault commands ────────────────────────────────────────────────────────────
+export interface Tag {
+  id: string;
+  name: string;
+  parent_name: string | null;
+  note_count: number;
+}
+
+export interface Attachment {
+  id: string;
+  file_path: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  note_id: string;
+  created_at: number;
+}
+
+export interface BacklinkNote {
+  id: string;
+  title: string;
+  file_path: string;
+}
+
+export interface OutboundLink {
+  link_text: string;
+  resolved_id: string | null;
+  resolved_title: string | null;
+}
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  file_path: string;
+  snippet: string;
+}
+
+export interface WikiLinkResolution {
+  title: string;
+  id: string | null;
+}
+
+export interface Settings {
+  theme: string;
+  text_font: string;
+  headings_font: string;
+  code_font: string;
+  font_size: number;
+  line_height: number;
+  line_width: number;
+  paragraph_spacing: number;
+  paragraph_indent: number;
+}
+
+// ── Vault ─────────────────────────────────────────────────────────────────────
 
 export function openVault(path: string): Promise<Workspace> {
   return invoke("open_vault", { path });
@@ -47,7 +100,7 @@ export function getWorkspaces(): Promise<Workspace[]> {
   return invoke("get_workspaces");
 }
 
-// ── Notes commands ────────────────────────────────────────────────────────────
+// ── Notes ─────────────────────────────────────────────────────────────────────
 
 export function getNote(id: string): Promise<NoteDetail> {
   return invoke("get_note", { id });
@@ -65,49 +118,25 @@ export function listNotes(): Promise<Note[]> {
   return invoke("list_notes");
 }
 
-// ── Attachment commands ───────────────────────────────────────────────────────
-
-export interface Attachment {
-  id: string;
-  /** Relative to vault root, e.g. "attachments/images/abc123.png" */
-  file_path: string;
-  file_name: string;
-  mime_type: string;
-  size_bytes: number;
-  note_id: string;
-  created_at: number;
+export function pinNote(id: string, pinned: boolean): Promise<void> {
+  return invoke("pin_note", { id, pinned });
 }
 
-/** Import from a native file-system path (file picker, drag-drop with path). */
-export function importAttachment(
-  sourcePath: string,
-  noteId: string
-): Promise<Attachment> {
-  return invoke("import_attachment", { sourcePath, noteId });
+export function deleteNote(id: string): Promise<void> {
+  return invoke("delete_note", { id });
 }
 
-/** Import from raw bytes (paste from clipboard). Max ~10 MB. */
-export function importAttachmentData(
-  data: number[],
-  filename: string,
-  noteId: string
-): Promise<Attachment> {
-  return invoke("import_attachment_data", { data, filename, noteId });
+// ── Tags ──────────────────────────────────────────────────────────────────────
+
+export function getTags(): Promise<Tag[]> {
+  return invoke("get_tags");
 }
 
-// ── Graph commands ────────────────────────────────────────────────────────────
-
-export interface BacklinkNote {
-  id: string;
-  title: string;
-  file_path: string;
+export function getNotesByTag(tagName: string): Promise<Note[]> {
+  return invoke("get_notes_by_tag", { tagName });
 }
 
-export interface OutboundLink {
-  link_text: string;
-  resolved_id: string | null;
-  resolved_title: string | null;
-}
+// ── Graph ─────────────────────────────────────────────────────────────────────
 
 export function getBacklinks(id: string): Promise<BacklinkNote[]> {
   return invoke("get_backlinks", { id });
@@ -117,29 +146,34 @@ export function getOutboundLinks(id: string): Promise<OutboundLink[]> {
   return invoke("get_outbound_links", { id });
 }
 
-// ── Search commands ───────────────────────────────────────────────────────────
-
-export interface SearchResult {
-  id: string;
-  title: string;
-  file_path: string;
-  /** Excerpt with <b> tags around matched terms. */
-  snippet: string;
-}
+// ── Search ────────────────────────────────────────────────────────────────────
 
 export function search(query: string): Promise<SearchResult[]> {
   return invoke("search", { query });
 }
 
-// ── Wikilink commands ─────────────────────────────────────────────────────────
+// ── Attachments ───────────────────────────────────────────────────────────────
 
-export interface WikiLinkResolution {
-  title: string;
-  id: string | null;
+export function importAttachment(sourcePath: string, noteId: string): Promise<Attachment> {
+  return invoke("import_attachment", { sourcePath, noteId });
 }
 
-export function resolveWikilinks(
-  titles: string[]
-): Promise<WikiLinkResolution[]> {
+export function importAttachmentData(data: number[], filename: string, noteId: string): Promise<Attachment> {
+  return invoke("import_attachment_data", { data, filename, noteId });
+}
+
+// ── Wikilinks ─────────────────────────────────────────────────────────────────
+
+export function resolveWikilinks(titles: string[]): Promise<WikiLinkResolution[]> {
   return invoke("resolve_wikilinks", { titles });
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+export function getSettings(): Promise<Settings> {
+  return invoke("get_settings");
+}
+
+export function saveSettings(settings: Settings): Promise<void> {
+  return invoke("save_settings", { settings });
 }
