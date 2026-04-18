@@ -1,3 +1,4 @@
+use nanoid::nanoid;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
@@ -34,11 +35,29 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
     conn.execute_batch("PRAGMA foreign_keys=ON;")?;
     // Create any missing tables (all use IF NOT EXISTS — safe to re-run).
     conn.execute_batch(SCHEMA_SQL)?;
-    // Additive column migrations — SQLite ignores these if the column already exists
-    // would error, so we check first and add only when missing.
-    add_column_if_missing(conn, "notes", "preview",   "TEXT DEFAULT ''")?;
-    add_column_if_missing(conn, "notes", "has_todos", "INTEGER DEFAULT 0")?;
-    add_column_if_missing(conn, "notes", "pinned",    "INTEGER DEFAULT 0")?;
+    // Additive column migrations — check first since SQLite doesn't support IF NOT EXISTS on columns.
+    add_column_if_missing(conn, "notes", "preview",     "TEXT DEFAULT ''")?;
+    add_column_if_missing(conn, "notes", "has_todos",   "INTEGER DEFAULT 0")?;
+    add_column_if_missing(conn, "notes", "pinned",      "INTEGER DEFAULT 0")?;
+    add_column_if_missing(conn, "tags",  "color",       "TEXT")?;
+    add_column_if_missing(conn, "tags",  "description", "TEXT")?;
+
+    // Versioned migrations tracked via PRAGMA user_version.
+    let user_version: i32 = conn
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    if user_version < 1 {
+        // v1: Reset all categories and seed the single default "Uncategorized".
+        conn.execute_batch("DELETE FROM note_tags; DELETE FROM tags;")?;
+        let id = nanoid::nanoid!();
+        conn.execute(
+            "INSERT INTO tags (id, name, parent_name, color) VALUES (?1, 'uncategorized', NULL, NULL)",
+            rusqlite::params![id],
+        )?;
+        conn.execute_batch("PRAGMA user_version = 1;")?;
+    }
+
     Ok(())
 }
 

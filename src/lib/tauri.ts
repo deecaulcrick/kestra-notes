@@ -42,6 +42,8 @@ export interface Tag {
   name: string;
   parent_name: string | null;
   note_count: number;
+  color: string | null;
+  description: string | null;
 }
 
 export interface Attachment {
@@ -136,6 +138,30 @@ export function getNotesByTag(tagName: string): Promise<Note[]> {
   return invoke("get_notes_by_tag", { tagName });
 }
 
+export function createCategory(name: string, color?: string, description?: string): Promise<Tag> {
+  return invoke("create_category", { name, color: color ?? null, description: description ?? null });
+}
+
+export function updateCategory(oldName: string, newName: string, color?: string | null, description?: string | null): Promise<void> {
+  return invoke("update_category", { oldName, newName, color: color ?? null, description: description ?? null });
+}
+
+export function deleteCategory(name: string): Promise<void> {
+  return invoke("delete_category", { name });
+}
+
+export function addNoteToCategory(noteId: string, categoryName: string): Promise<void> {
+  return invoke("add_note_to_category", { noteId, categoryName });
+}
+
+export function removeNoteFromCategory(noteId: string, categoryName: string): Promise<void> {
+  return invoke("remove_note_from_category", { noteId, categoryName });
+}
+
+export function deleteAllCategories(): Promise<void> {
+  return invoke("delete_all_categories");
+}
+
 // ── Graph ─────────────────────────────────────────────────────────────────────
 
 export function getBacklinks(id: string): Promise<BacklinkNote[]> {
@@ -176,4 +202,10 @@ export function getSettings(): Promise<Settings> {
 
 export function saveSettings(settings: Settings): Promise<void> {
   return invoke("save_settings", { settings });
+}
+
+// ── Windows ───────────────────────────────────────────────────────────────────
+
+export function openNoteWindow(noteId: string, tag: string): Promise<void> {
+  return invoke("open_note_window", { noteId, tag });
 }

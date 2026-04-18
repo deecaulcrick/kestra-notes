@@ -11,7 +11,7 @@ const THEMES: ThemeMeta[] = [
   { id: "light",           label: "Default",         pro: false },
   { id: "dark-graphite",   label: "Dark Graphite",   pro: false },
   { id: "high-contrast",   label: "High Contrast",   pro: false },
-  { id: "charcoal",        label: "Charcoal",        pro: false  },
+  { id: "forest",        label: "Forest",        pro: false  },
   { id: "solarized-light", label: "Solarized Light", pro: false  },
   { id: "solarized-dark",  label: "Solarized Dark",  pro: false  },
 ];

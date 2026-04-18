@@ -18,7 +18,7 @@ interface NoteStore {
   activeNoteId: string | null;
 
   openVault: (path: string) => Promise<void>;
-  createNote: (title?: string) => Promise<void>;
+  createNote: (title?: string) => Promise<string | null>;
   loadNotes: () => Promise<void>;
   loadNotesByTag: (tagName: string) => Promise<void>;
   setActiveNote: (id: string) => void;
@@ -48,8 +48,10 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     try {
       const note = await createNote(title);
       set((s) => ({ notes: [note, ...s.notes], activeNoteId: note.id }));
+      return note.id;
     } catch (e) {
       set({ error: String(e) });
+      return null;
     }
   },
 

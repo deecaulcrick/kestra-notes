@@ -44,8 +44,15 @@ pub fn run() {
             commands::search::search,
             commands::tags::get_tags,
             commands::tags::get_notes_by_tag,
+            commands::tags::create_category,
+            commands::tags::update_category,
+            commands::tags::delete_category,
+            commands::tags::add_note_to_category,
+            commands::tags::remove_note_from_category,
+            commands::tags::delete_all_categories,
             commands::settings::get_settings,
             commands::settings::save_settings,
+            commands::windows::open_note_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

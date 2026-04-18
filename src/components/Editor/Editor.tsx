@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pin, Trash2, MoreHorizontal } from "lucide-react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Typography from "@tiptap/extension-typography";
@@ -25,15 +24,14 @@ import { Markdown } from "tiptap-markdown";
 import { open } from "@tauri-apps/plugin-dialog";
 
 import { WikiLink, registerWikiLinkDispatch, wikiLinkKey } from "./extensions/WikiLink";
+import { Tag } from "./extensions/Tag";
 import { createNote as createNoteCmd } from "../../lib/tauri";
 import { SlashCommands, registerImageRequestHandler } from "./extensions/SlashCommands";
 import { Callout } from "./extensions/Callout";
 import { ImageUpload, insertFromPath } from "./extensions/ImageUpload";
-import { Tag } from "./extensions/Tag";
 import { EditorToolbar } from "./EditorToolbar";
 import { useNote } from "../../hooks/useNote";
 import { useNoteStore } from "../../store/noteStore";
-import { useUIStore } from "../../store/uiStore";
 import { useThemeStore } from "../../store/themeStore";
 import "./EditorStyles.css";
 
@@ -41,32 +39,38 @@ const lowlight = createLowlight(common);
 
 type MarkdownStorage = { getMarkdown(): string };
 
-interface Props {
-  noteId: string | null;
+export interface EditorStats {
+  wordCount: number;
+  readingMins: number;
+  saveStatus: "idle" | "saving" | "saved";
 }
 
-export function Editor({ noteId }: Props) {
+interface Props {
+  noteId: string | null;
+  onNavigate?: (id: string) => void;
+  /** Controlled from EditorPane titlebar */
+  toolbarVisible?: boolean;
+  /** Called whenever word count / save status changes */
+  onStatsChange?: (stats: EditorStats) => void;
+}
+
+export function Editor({ noteId, onNavigate, toolbarVisible = false, onStatsChange }: Props) {
   const scheduleSaveRef = useRef<((content: string) => void) | undefined>(undefined);
   const [bubbleRect, setBubbleRect] = useState<DOMRect | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  const { setActiveNote, workspace, notes, pinNote, deleteNote } = useNoteStore();
-  const vaultPath = workspace?.vault_path ?? null;
-  const setActiveTag = useUIStore((s) => s.setActiveTag);
+  const { setActiveNote } = useNoteStore();
+  const vaultPath  = useNoteStore((s) => s.workspace?.vault_path ?? null);
   const typography = useThemeStore((s) => s.typography);
 
-  const onNavigateRef = useRef<(id: string) => void>((id) => setActiveNote(id));
+  const onNavigateRef   = useRef<(id: string) => void>((id) => setActiveNote(id));
   const onCreateNoteRef = useRef<(title: string) => void>((title) => { void createNoteCmd(title); });
-  const onTagClickRef = useRef<(tag: string) => void>((tag) => setActiveTag(tag));
-  onNavigateRef.current = (id) => setActiveNote(id);
+  onNavigateRef.current  = (id) => { if (onNavigate) onNavigate(id); else setActiveNote(id); };
   onCreateNoteRef.current = (title) => {
     void createNoteCmd(title).then((note) => {
-      // Navigate to the note (whether newly created or already existing).
-      setActiveNote(note.id);
+      if (onNavigate) onNavigate(note.id);
+      else setActiveNote(note.id);
     });
   };
-  onTagClickRef.current = (tag) => setActiveTag(tag);
 
   const noteIdRef = useRef<string | null>(noteId);
   noteIdRef.current = noteId;
@@ -118,11 +122,9 @@ export function Editor({ noteId }: Props) {
         onNavigate: (id) => onNavigateRef.current(id),
         onCreateNote: (title) => onCreateNoteRef.current(title),
       }),
-      Tag.configure({
-        onTagClick: (tag) => onTagClickRef.current(tag),
-      }),
       SlashCommands,
       Callout,
+      Tag,
     ],
 
     editorProps: {
@@ -132,20 +134,13 @@ export function Editor({ noteId }: Props) {
     onUpdate: ({ editor }) => {
       const store = editor.storage as unknown as Record<string, unknown>;
       let md = (store["markdown"] as MarkdownStorage).getMarkdown();
-      // tiptap-markdown escapes [ → \[ because brackets are markdown link syntax.
-      // Undo this globally so [[wikilinks]] survive the round-trip to disk.
-      // Actual link nodes are serialized separately by tiptap-markdown as
-      // [text](url), not as plain text, so they are unaffected by this.
-      // Only unescape [[wikilinks]] — not all brackets.
-      // tiptap-markdown escapes literal [ as \[ but [[Note]] becomes \[\[Note\]\].
       md = md.replace(/\\\[\\\[([^\]]*)\\\]\\\]/g, "[[$1]]");
       scheduleSaveRef.current?.(md);
     },
 
     onSelectionUpdate: ({ editor }) => {
       if (editor.state.selection.empty || editor.isActive("codeBlock")) {
-        setBubbleRect(null);
-        return;
+        setBubbleRect(null); return;
       }
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0) { setBubbleRect(null); return; }
@@ -160,7 +155,16 @@ export function Editor({ noteId }: Props) {
   const { saveStatus, scheduleSave } = useNote(noteId, editor);
   scheduleSaveRef.current = scheduleSave;
 
-  // Apply typography settings as CSS variables on the editor container.
+  // Report stats up to EditorPane
+  const editorStore = editor?.storage as unknown as Record<string, unknown> | undefined;
+  const wordCount   = (editorStore?.["characterCount"] as { words(): number } | undefined)?.words() ?? 0;
+  const readingMins = Math.max(1, Math.ceil(wordCount / 200));
+
+  useEffect(() => {
+    onStatsChange?.({ wordCount, readingMins, saveStatus });
+  }, [wordCount, saveStatus]);
+
+  // Typography CSS variables
   useEffect(() => {
     const el = document.querySelector<HTMLElement>(".editor-content");
     if (!el) return;
@@ -174,7 +178,7 @@ export function Editor({ noteId }: Props) {
     el.style.setProperty("--editor-paragraph-indent", `${typography.paragraphIndent}em`);
   }, [typography]);
 
-  // Register WikiLink dispatch.
+  // WikiLink dispatch
   useEffect(() => {
     if (!editor) return;
     registerWikiLinkDispatch((resolved) => {
@@ -185,7 +189,7 @@ export function Editor({ noteId }: Props) {
     return () => registerWikiLinkDispatch(() => {});
   }, [editor]);
 
-  // Register /image slash command handler.
+  // Image slash command
   useEffect(() => {
     registerImageRequestHandler(async () => {
       if (!editor || editor.isDestroyed) return;
@@ -203,102 +207,39 @@ export function Editor({ noteId }: Props) {
     });
   }, [editor, vaultPath]);
 
-  // Close menu on outside click.
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [menuOpen]);
-
-  const activeNote = noteId ? (notes.find((n) => n.id === noteId) ?? null) : null;
-
-  const handlePin = useCallback(async () => {
-    if (!noteId || !activeNote) return;
-    setMenuOpen(false);
-    await pinNote(noteId, !activeNote.pinned);
-  }, [noteId, activeNote, pinNote]);
-
-  const handleDelete = useCallback(async () => {
-    if (!noteId) return;
-    setMenuOpen(false);
-    if (window.confirm("Delete this note? This cannot be undone.")) {
-      await deleteNote(noteId);
-    }
-  }, [noteId, deleteNote]);
-
-  // Destroy editor on unmount.
   useEffect(() => () => { editor?.destroy(); }, [editor]);
 
   if (!noteId) {
-    return (
-      <div className="editor-empty-state">
-        Select a note or press + to create one.
-      </div>
-    );
+    return <div className="editor-empty-state">Select a note or press + to create one.</div>;
   }
-
-  const editorStore = editor?.storage as unknown as Record<string, unknown> | undefined;
-  const wordCount = (editorStore?.["characterCount"] as { words(): number } | undefined)?.words() ?? 0;
-  const readingMins = Math.max(1, Math.ceil(wordCount / 200));
 
   return (
     <div className="editor-wrapper">
-      {editor && bubbleRect &&
-        createPortal(
-          <div
-            className="bubble-menu-portal"
-            style={{
-              position: "fixed",
-              top: bubbleRect.top - 46,
-              left: bubbleRect.left + bubbleRect.width / 2,
-              transform: "translateX(-50%)",
-              zIndex: 200,
-            }}
-          >
-            <EditorToolbar editor={editor} />
-          </div>,
-          document.body
-        )}
-
-      {/* Note actions menu */}
-      <div className="editor-actions" ref={menuRef}>
-        <button
-          className="editor-actions-btn"
-          title="More options"
-          onClick={() => setMenuOpen((o) => !o)}
+      {/* Bubble menu on text selection */}
+      {editor && bubbleRect && createPortal(
+        <div
+          className="bubble-menu-portal"
+          style={{
+            position: "fixed",
+            top: bubbleRect.top - 46,
+            left: bubbleRect.left + bubbleRect.width / 2,
+            transform: "translateX(-50%)",
+            zIndex: 200,
+          }}
         >
-          <MoreHorizontal size={16} />
-        </button>
-        {menuOpen && (
-          <div className="editor-actions-menu">
-            <button className="editor-actions-item" onClick={handlePin}>
-              <Pin size={14} />
-              {activeNote?.pinned ? "Unpin note" : "Pin note"}
-            </button>
-            <button className="editor-actions-item editor-actions-item--danger" onClick={handleDelete}>
-              <Trash2 size={14} />
-              Delete note
-            </button>
-          </div>
-        )}
-      </div>
+          <EditorToolbar editor={editor} />
+        </div>,
+        document.body
+      )}
+
+      {/* Persistent bottom-center floating toolbar (toggled from titlebar) */}
+      {editor && toolbarVisible && (
+        <div className="editor-persistent-toolbar">
+          <EditorToolbar editor={editor} />
+        </div>
+      )}
 
       <EditorContent editor={editor} className="editor-content" />
-
-      <div className="editor-status-bar">
-        <span>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
-        <span>·</span>
-        <span>~{readingMins} min read</span>
-        <span>·</span>
-        {saveStatus === "saving" && <span className="saving">Saving…</span>}
-        {saveStatus === "saved"  && <span className="saved">Saved</span>}
-        {saveStatus === "idle"   && <span>Saved</span>}
-      </div>
     </div>
   );
 }

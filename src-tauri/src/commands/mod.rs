@@ -5,3 +5,4 @@ pub mod search;
 pub mod settings;
 pub mod tags;
 pub mod vault;
+pub mod windows;

@@ -12,11 +12,16 @@
   "app": {
     "windows": [
       {
-        "title": "limitless",
-        "width": 800,
-        "height": 600
+        "title": "Limitless",
+        "width": 1024,
+        "height": 720,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 16, "y": 24 }
       }
     ],
+   
     "security": {
       "csp": null,
       "assetProtocol": {

@@ -18,12 +18,16 @@ interface UIStore {
   activeSection: SidebarSection;
   activeTagName: string | null;
 
+  // Active note in the editor pane
+  activeNoteId: string | null;
+
   // Actions
   toggleSidebar: () => void;
   toggleNoteList: () => void;
   toggleBacklinks: () => void;
   setSection: (section: SidebarSection) => void;
   setActiveTag: (tagName: string | null) => void;
+  setActiveNoteId: (id: string | null) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -33,11 +37,13 @@ export const useUIStore = create<UIStore>((set) => ({
 
   activeSection: "notes",
   activeTagName: null,
+  activeNoteId: null,
 
-  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-  toggleNoteList: () => set((s) => ({ noteListCollapsed: !s.noteListCollapsed })),
+  toggleSidebar:   () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  toggleNoteList:  () => set((s) => ({ noteListCollapsed: !s.noteListCollapsed })),
   toggleBacklinks: () => set((s) => ({ backlinksCollapsed: !s.backlinksCollapsed })),
 
-  setSection: (section) => set({ activeSection: section, activeTagName: null }),
-  setActiveTag: (tagName) => set({ activeTagName: tagName, activeSection: "notes" }),
+  setSection:      (section) => set({ activeSection: section, activeTagName: null }),
+  setActiveTag:    (tagName) => set({ activeTagName: tagName, activeSection: "notes" }),
+  setActiveNoteId: (id) => set({ activeNoteId: id }),
 }));

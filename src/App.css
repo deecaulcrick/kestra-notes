@@ -5,60 +5,58 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-primary);
+  background: var(--bg-window);
 }
 
 .vault-picker-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 48px 56px;
-  border-radius: 16px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-8);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  border: 0.5px solid var(--border-medium);
   text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
 }
 
 .vault-picker-title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
   letter-spacing: -0.03em;
 }
 
 .vault-picker-subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-tertiary);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
   max-width: 280px;
   line-height: 1.5;
 }
 
 .vault-picker-error {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-info);
-  background: var(--bg-info);
-  border: 1px solid var(--border-info);
-  border-radius: 8px;
-  padding: 8px 14px;
+  font-size: var(--text-sm);
+  color: #FF3B30;
+  background: rgba(255,59,48,0.06);
+  border: 0.5px solid rgba(255,59,48,0.20);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
   max-width: 300px;
 }
 
 .vault-picker-btn {
-  margin-top: 8px;
-  padding: 10px 28px;
-  border-radius: 8px;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-full);
   border: none;
-  background: var(--accent);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  background: var(--text-primary);
+  color: var(--text-inverse);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--transition-fast);
 }
 
-.vault-picker-btn:hover { opacity: 0.88; }
-.vault-picker-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.vault-picker-btn:hover { opacity: 0.80; }
+.vault-picker-btn:disabled { opacity: 0.40; cursor: not-allowed; }

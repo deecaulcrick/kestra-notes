@@ -2,46 +2,47 @@
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background: var(--bg-primary);
+  background: var(--bg-window);
 }
 
-/* Sidebar pane */
+/* ── Pane 1: Sidebar ───────────────────────────────────────────────────────── */
 .library-sidebar-pane {
   width: 220px;
   flex-shrink: 0;
   overflow: hidden;
-  transition: width 0.2s ease;
+  transition: width var(--transition-base);
 }
 
 .library-sidebar-pane.collapsed {
   width: 0;
 }
 
-/* Note list pane */
+/* ── Pane 2: Note list ─────────────────────────────────────────────────────── */
 .library-notelist-pane {
   width: 280px;
   flex-shrink: 0;
+  border-right: 0.5px solid var(--border-subtle);
   overflow: hidden;
-  transition: width 0.2s ease;
-}
-
-.library-notelist-pane.collapsed {
-  width: 0;
-}
-
-/* Editor column — takes remaining space, stacks editor + backlinks vertically */
-.library-editor-col {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background: var(--editor-bg);
+  background: var(--bg-sidebar);
 }
 
+/* ── Pane 3: Editor ────────────────────────────────────────────────────────── */
 .library-editor-pane {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: var(--bg-content);
+}
+
+.library-editor-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: var(--text-base);
 }

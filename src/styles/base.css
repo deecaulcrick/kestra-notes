@@ -1,26 +1,107 @@
-/* ── Base reset + global styles ────────────────────────────────────────────── */
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
 
 *, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html, body, #root {
-  margin: 0;
   height: 100%;
-  background: var(--bg-primary);
+  background: transparent !important;
+}
+
+body {
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button {
   font-family: inherit;
   font-size: inherit;
+  cursor: pointer;
 }
 
-/* Scrollbars */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+input, textarea {
+  font-family: inherit;
+}
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+
+:root {
+  /* Type scale */
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 13px;
+  --text-md:   14px;
+  --text-lg:   15px;
+  --text-xl:   17px;
+  --text-2xl:  22px;
+  --text-3xl:  28px;
+  --text-4xl:  34px;
+
+  /* Weight */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* Spacing (4px base) */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Border radius */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+
+  /* Motion */
+  --transition-fast: 80ms ease;
+  --transition-base: 120ms ease;
+}
+
+/* ── Category color system ─────────────────────────────────────────────────── */
+/* 11 colors sourced from brand palette. Dot is always full-saturation.         */
+/* Card/badge are mixed-down versions of the same hue on white.                 */
+
+/* Light mode */
+.cat-default    { --cat-dot: #8E8E93; --cat-card: #F2F2F7; --cat-badge: #E5E5EA; }
+.cat-vermillion { --cat-dot: #FF340C; --cat-card: #FFD0C2; --cat-badge: #FFB8A0; }
+.cat-crimson    { --cat-dot: #E0070F; --cat-card: #FFCCCF; --cat-badge: #FFB0B5; }
+.cat-hotpink    { --cat-dot: #F03172; --cat-card: #FFCADB; --cat-badge: #FFB0CB; }
+.cat-blush      { --cat-dot: #E990A2; --cat-card: #FADADF; --cat-badge: #F5C4CC; }
+.cat-amber      { --cat-dot: #FFAE00; --cat-card: #FFE8A0; --cat-badge: #FFD96B; }
+.cat-citrus     { --cat-dot: #CAC307; --cat-card: #ECEA9A; --cat-badge: #DDD870; }
+.cat-teal       { --cat-dot: #0F4A42; --cat-card: #B8D8D4; --cat-badge: #96C4BE; }
+.cat-periwinkle { --cat-dot: #5580C8; --cat-card: #C8D8F5; --cat-badge: #AABFE8; }
+.cat-navy       { --cat-dot: #181A4D; --cat-card: #B8BADC; --cat-badge: #9698C8; }
+.cat-cobalt     { --cat-dot: #273287; --cat-card: #BCC0E8; --cat-badge: #9EA4D8; }
+.cat-espresso   { --cat-dot: #441B07; --cat-card: #D4BCA8; --cat-badge: #C0A48C; }
+
+/* Dark mode — dot unchanged, card/badge become dark saturated tints */
+[data-theme="dark"] .cat-default,
+[data-theme="dark-graphite"] .cat-default { --cat-card: #2C2C2E; --cat-badge: #3A3A3C; }
+[data-theme="dark"] .cat-vermillion { --cat-card: #5C1A08; --cat-badge: #7A2410; }
+[data-theme="dark"] .cat-crimson    { --cat-card: #580610; --cat-badge: #740A18; }
+[data-theme="dark"] .cat-hotpink    { --cat-card: #5C1030; --cat-badge: #7A1840; }
+[data-theme="dark"] .cat-blush      { --cat-card: #542030; --cat-badge: #6E2C40; }
+[data-theme="dark"] .cat-amber      { --cat-card: #5C3E00; --cat-badge: #7A5400; }
+[data-theme="dark"] .cat-citrus     { --cat-card: #484600; --cat-badge: #5E5C00; }
+[data-theme="dark"] .cat-teal       { --cat-card: #082820; --cat-badge: #0E3A2E; }
+[data-theme="dark"] .cat-periwinkle { --cat-card: #1C2C50; --cat-badge: #263A68; }
+[data-theme="dark"] .cat-navy       { --cat-card: #10122E; --cat-badge: #181A40; }
+[data-theme="dark"] .cat-cobalt     { --cat-card: #101840; --cat-badge: #182054; }
+[data-theme="dark"] .cat-espresso   { --cat-card: #200E04; --cat-badge: #301608; }

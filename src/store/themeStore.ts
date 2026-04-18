@@ -5,7 +5,7 @@ export type ThemeId =
   | "light"
   | "dark-graphite"
   | "high-contrast"
-  | "charcoal"
+  | "forest"
   | "solarized-light"
   | "solarized-dark";
 
@@ -21,8 +21,8 @@ export interface TypographySettings {
 }
 
 const DEFAULT_TYPOGRAPHY: TypographySettings = {
-  textFont: "Lora",
-  headingsFont: "Fraunces",
+  textFont: "Nunito Sans",
+  headingsFont: "Nunito Sans",
   codeFont: "JetBrains Mono",
   fontSize: 17,
   lineHeight: 1.75,
@@ -46,7 +46,7 @@ function applyTheme(id: ThemeId) {
 }
 
 export const useThemeStore = create<ThemeStore>((set, get) => ({
-  activeTheme: (localStorage.getItem("theme") as ThemeId) ?? "dark-graphite",
+  activeTheme: (localStorage.getItem("theme") as ThemeId) ?? "light",
   typography: DEFAULT_TYPOGRAPHY,
 
   setTheme: (id) => {

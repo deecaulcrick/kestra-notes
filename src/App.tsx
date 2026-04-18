@@ -2,21 +2,35 @@ import { useEffect } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useNoteStore } from "./store/noteStore";
 import { Library } from "./views/Library";
+import { NoteWindowWithVault } from "./views/NoteWindow";
 import "./App.css";
 
+// Detect if this window was opened as a note window via query params.
+const params = new URLSearchParams(window.location.search);
+const WINDOW_NOTE_ID = params.get("noteId");
+const WINDOW_TAG = params.get("tag") ?? "";
+
 export default function App() {
+  // ── Note window mode ──────────────────────────────────────────────────────
+  if (WINDOW_NOTE_ID) {
+    return <NoteWindowWithVault noteId={WINDOW_NOTE_ID} tag={WINDOW_TAG} />;
+  }
+
+  // ── Library (main window) mode ────────────────────────────────────────────
+  return <LibraryApp />;
+}
+
+function LibraryApp() {
   const workspace = useNoteStore((s) => s.workspace);
   const isLoading = useNoteStore((s) => s.isLoading);
   const error = useNoteStore((s) => s.error);
   const openVault = useNoteStore((s) => s.openVault);
 
-  // On first launch, try to reopen the last vault from localStorage.
   useEffect(() => {
     const lastPath = localStorage.getItem("lastVaultPath");
     if (lastPath) void openVault(lastPath);
   }, []);
 
-  // Persist vault path whenever it changes.
   useEffect(() => {
     if (workspace?.vault_path) {
       localStorage.setItem("lastVaultPath", workspace.vault_path);

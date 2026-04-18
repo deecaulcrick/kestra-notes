@@ -1,89 +1,80 @@
 /**
- * Tag — inline Mark extension for #tagname syntax.
+ * Tag — cursor-aware #hashtag decorator.
  *
- * Tags are stored as plain text in the .md file (just "#tagname").
- * This extension renders them as styled spans inside Tiptap without
- * changing the document structure — same approach as WikiLink.
+ * Uses ProseMirror decorations so the underlying markdown stays as plain
+ * `#tagname` — no custom serialiser needed.
  *
- * Clicking a tag navigates the sidebar to that tag's note list.
+ * Key behaviour:
+ *   • Decorates every #tagname ONLY when the cursor is NOT inside it.
+ *     This prevents partial-tag noise (#t, #ta, #tas…) while typing.
+ *   • Skips code blocks and inline code marks.
+ *   • Requires # to be at start of text or after a non-word character so
+ *     `color:#red` is not treated as a tag.
  */
 
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import type { Node } from "@tiptap/pm/model";
 
-const tagKey = new PluginKey<DecorationSet>("tag");
-// Match #tagname — must start with letter, can include hyphens, underscores, slashes.
-const TAG_RE = /#([a-zA-Z][a-zA-Z0-9_\-/]*)/g;
+// # followed by a letter then optional word chars / hyphens / slashes.
+// Preceded by start-of-string or a non-word character.
+const TAG_RE = /(^|[^\w&#])#([a-zA-Z][\w\-_/]*)/g;
 
-export interface TagOptions {
-  onTagClick?: (tagName: string) => void;
-}
+export const tagPluginKey = new PluginKey<DecorationSet>("hashtag");
 
-export const Tag = Extension.create<TagOptions>({
-  name: "tag",
-
-  addOptions() {
-    return { onTagClick: undefined };
-  },
+export const Tag = Extension.create({
+  name: "hashtag",
 
   addProseMirrorPlugins() {
-    const options = this.options;
-
     return [
       new Plugin({
-        key: tagKey,
-
-        state: {
-          init(_, { doc }) {
-            return buildDecorations(doc);
-          },
-          apply(tr, old) {
-            return tr.docChanged ? buildDecorations(tr.doc) : old;
-          },
-        },
+        key: tagPluginKey,
 
         props: {
           decorations(state) {
-            return tagKey.getState(state);
-          },
+            const { doc, selection } = state;
+            const cursorFrom = selection.from;
+            const cursorTo   = selection.to;
+            const decorations: Decoration[] = [];
 
-          handleClick(_view, _pos, event) {
-            const target = event.target as HTMLElement;
-            const span = target.closest(".note-tag") as HTMLElement | null;
-            if (!span) return false;
-            const tagName = span.dataset.tagName;
-            if (tagName) options.onTagClick?.(tagName);
-            return !!tagName;
+            doc.descendants((node, pos) => {
+              // Don't enter code blocks.
+              if (node.type.name === "codeBlock") return false;
+
+              if (!node.isText || !node.text) return true;
+
+              // Skip inline code marks.
+              if (node.marks.some((m) => m.type.name === "code")) return true;
+
+              const text = node.text;
+              TAG_RE.lastIndex = 0;
+
+              while (true) {
+                const match = TAG_RE.exec(text);
+                if (!match) break;
+
+                // match[1] = prefix char (may be ""), match[2] = tag word (no #)
+                const hashStart = pos + match.index + match[1].length;
+                const hashEnd   = hashStart + 1 + match[2].length; // +1 for "#"
+
+                // Skip while cursor is anywhere inside this tag — user is still typing.
+                if (cursorFrom <= hashEnd && cursorTo >= hashStart) continue;
+
+                decorations.push(
+                  Decoration.inline(hashStart, hashEnd, {
+                    class: "editor-tag",
+                    "data-tag": match[2].toLowerCase(),
+                  })
+                );
+              }
+
+              return true;
+            });
+
+            return DecorationSet.create(doc, decorations);
           },
         },
       }),
     ];
   },
 });
-
-function buildDecorations(doc: Node): DecorationSet {
-  const decos: Decoration[] = [];
-
-  doc.descendants((node, pos) => {
-    if (!node.isText || !node.text) return;
-    TAG_RE.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = TAG_RE.exec(node.text)) !== null) {
-      decos.push(
-        Decoration.inline(
-          pos + match.index,
-          pos + match.index + match[0].length,
-          {
-            nodeName: "span",
-            class: "note-tag",
-            "data-tag-name": match[1].toLowerCase(),
-          }
-        )
-      );
-    }
-  });
-
-  return DecorationSet.create(doc, decos);
-}

@@ -220,25 +220,44 @@ pub(crate) fn extract_title(content: &str, fallback: &str) -> String {
     if fallback.is_empty() { "Untitled".to_string() } else { fallback.to_string() }
 }
 
-/// Extract a 1-line preview: first non-heading, non-empty body line.
+/// Extract a multi-line preview: collect up to 3 non-heading body lines,
+/// join them with a space, and cap the total at 300 characters.
 pub(crate) fn extract_preview(content: &str) -> String {
+    let mut lines: Vec<String> = Vec::new();
+    let mut in_code_block = false;
+
     for line in content.lines() {
         let t = line.trim();
-        if t.is_empty() || t.starts_with('#') || t.starts_with("---") || t.starts_with("```") {
+
+        // Toggle code block tracking — skip content inside fences.
+        if t.starts_with("```") {
+            in_code_block = !in_code_block;
             continue;
         }
+        if in_code_block { continue; }
+
+        // Skip frontmatter separators, headings, and blank lines.
+        if t.is_empty() || t.starts_with('#') || t.starts_with("---") { continue; }
+
+        // Strip common markdown prefixes so the preview reads as plain text.
         let cleaned = t
             .trim_start_matches("- [ ] ")
             .trim_start_matches("- [x] ")
             .trim_start_matches("- [X] ")
             .trim_start_matches("- ")
             .trim_start_matches("* ")
-            .trim_start_matches("> ");
-        if !cleaned.is_empty() {
-            return cleaned.chars().take(140).collect();
-        }
+            .trim_start_matches("> ")
+            .trim();
+
+        if cleaned.is_empty() { continue; }
+
+        lines.push(cleaned.to_string());
+        if lines.len() == 3 { break; }
     }
-    String::new()
+
+    let preview = lines.join(" ");
+    // Cap total length so very long lines don't bloat the DB.
+    preview.chars().take(300).collect()
 }
 
 /// Extract `#tag` and `#nested/tag` references from content (case-insensitive).
@@ -325,6 +344,14 @@ pub(crate) fn index_tags(note_id: &str, content: &str, conn: &rusqlite::Connecti
             );
         }
     }
+
+    // Remove tags that are no longer referenced by any note.
+    // This prevents partial tags (#t, #ta, #tas) from accumulating
+    // when the user finishes typing a full tag name like #tasks.
+    let _ = conn.execute(
+        "DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM note_tags)",
+        [],
+    );
 }
 
 fn sanitize_filename(title: &str) -> String {

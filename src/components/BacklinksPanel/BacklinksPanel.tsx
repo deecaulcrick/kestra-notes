@@ -1,22 +1,54 @@
 import { useNoteStore } from "../../store/noteStore";
 import { useUIStore } from "../../store/uiStore";
 import { useGraph } from "../../hooks/useGraph";
+import { openNoteWindow } from "../../lib/tauri";
 import type { BacklinkNote } from "../../lib/tauri";
 import "./BacklinksPanel.css";
 
-export function BacklinksPanel() {
-  const activeNoteId = useNoteStore((s) => s.activeNoteId);
+interface Props {
+  /** When embedded in a NoteWindow, pass the noteId directly instead of reading from store. */
+  noteId?: string;
+  /** Embedded mode: no collapse toggle, no border, rendered inline. */
+  embedded?: boolean;
+}
+
+export function BacklinksPanel({ noteId: propNoteId, embedded = false }: Props) {
+  const storeNoteId = useNoteStore((s) => s.activeNoteId);
   const setActiveNote = useNoteStore((s) => s.setActiveNote);
   const collapsed = useUIStore((s) => s.backlinksCollapsed);
   const toggle = useUIStore((s) => s.toggleBacklinks);
 
+  const activeNoteId = propNoteId ?? storeNoteId;
   const { backlinks, isLoading } = useGraph(activeNoteId);
   const count = backlinks.length;
-  console.log("[BacklinksPanel] activeNoteId=", activeNoteId, "backlinks=", backlinks, "collapsed=", collapsed);
+
+  function handleBacklinkClick(note: BacklinkNote) {
+    if (propNoteId) {
+      // In note window context — open a new window.
+      void openNoteWindow(note.id, "");
+    } else {
+      setActiveNote(note.id);
+    }
+  }
+
+  if (embedded) {
+    return (
+      <div className="backlinks-embedded">
+        {isLoading ? (
+          <p className="backlinks-empty">Loading…</p>
+        ) : count === 0 ? (
+          <p className="backlinks-empty">No notes link here yet.</p>
+        ) : (
+          backlinks.map((note) => (
+            <BacklinkCard key={note.id} note={note} onClick={() => handleBacklinkClick(note)} />
+          ))
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`backlinks-panel${collapsed ? " collapsed" : ""}`}>
-      {/* Divider / toggle bar */}
       <button className="backlinks-toggle" onClick={toggle} title="Toggle backlinks (⌘⇧B)">
         <div className="backlinks-toggle-line" />
         <span className="backlinks-toggle-label">
@@ -26,7 +58,6 @@ export function BacklinksPanel() {
         <div className="backlinks-toggle-line" />
       </button>
 
-      {/* Expanded content */}
       {!collapsed && (
         <div className="backlinks-list">
           {isLoading ? (
@@ -35,11 +66,7 @@ export function BacklinksPanel() {
             <p className="backlinks-empty">No notes link here yet.</p>
           ) : (
             backlinks.map((note) => (
-              <BacklinkCard
-                key={note.id}
-                note={note}
-                onClick={() => setActiveNote(note.id)}
-              />
+              <BacklinkCard key={note.id} note={note} onClick={() => handleBacklinkClick(note)} />
             ))
           )}
         </div>

@@ -1,0 +1,383 @@
+/* ── Note window shell ─────────────────────────────────────────────────────── */
+
+.note-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  /* Background uses the category card color via CSS var, fallback to window bg */
+  background: var(--cat-card, var(--bg-window));
+}
+
+/* ── Title bar ─────────────────────────────────────────────────────────────── */
+
+.note-window-titlebar {
+  display: flex;
+  align-items: center;
+  /* macOS traffic lights are ~68px wide with Overlay title bar style.
+     Add left padding so breadcrumb doesn't sit under the traffic lights. */
+  padding: 0 var(--space-4) 0 80px;
+  height: 56px;
+  flex-shrink: 0;
+  /* Slightly translucent so category color shows through */
+  background: color-mix(in srgb, var(--cat-card, var(--bg-window)) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 0.5px solid var(--border-subtle);
+  user-select: none;
+  gap: var(--space-3);
+}
+
+/* ── Breadcrumb ────────────────────────────────────────────────────────────── */
+
+.note-window-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.nw-breadcrumb-root {
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nw-breadcrumb-sep {
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.nw-breadcrumb-category {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Category dot — uses the category color class on the dot element */
+.nw-breadcrumb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--cat-dot, var(--text-tertiary));
+  flex-shrink: 0;
+}
+
+.nw-breadcrumb-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Title bar right actions ───────────────────────────────────────────────── */
+
+.note-window-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.nw-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.nw-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nw-action-btn--active {
+  background: var(--bg-selected);
+  color: var(--text-primary);
+}
+
+/* Portal dropdown — rendered in body, positioned via fixed coords */
+.nw-portal-dropdown {
+  position: fixed;
+  z-index: 9999;
+  min-width: 180px;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 0.5px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .nw-portal-dropdown,
+[data-theme="dark-graphite"] .nw-portal-dropdown {
+  background: rgba(44,44,46,0.96);
+}
+
+/* Actions items inside portal */
+.nw-actions-menu-inner {
+  padding: var(--space-1) 0;
+}
+
+.nw-actions-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.nw-actions-item:hover {
+  background: var(--bg-hover);
+}
+
+.nw-actions-item--danger {
+  color: #FF3B30;
+}
+
+.nw-actions-item--danger:hover {
+  background: rgba(255,59,48,0.06);
+}
+
+/* ── Body: editor + optional info panel ────────────────────────────────────── */
+
+.note-window-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  /* Editor area inherits the category card tint */
+  background: var(--cat-card, var(--bg-window));
+}
+
+.note-window-editor {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Override editor background to use note window category color */
+.note-window .editor-wrapper,
+.note-window .editor-content,
+.note-window .editor-status-bar {
+  background: transparent;
+}
+
+/* ── Info / backlinks panel ─────────────────────────────────────────────────── */
+
+.note-window-info-panel {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 0.5px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--cat-card, var(--bg-window)) 60%, var(--bg-window));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nw-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.nw-info-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+}
+
+.nw-info-close {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.nw-info-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Category selector content lives inside .nw-portal-dropdown ─────────────── */
+
+.nw-cat-selector-header {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  width: 240px;
+}
+
+.nw-cat-search {
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border: 0.5px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  outline: none;
+}
+
+.nw-cat-search:focus {
+  border-color: var(--text-tertiary);
+}
+
+.nw-cat-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: var(--space-1) var(--space-1);
+}
+
+.nw-cat-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.nw-cat-option:hover {
+  background: var(--bg-hover);
+}
+
+.nw-cat-option.selected {
+  background: var(--cat-badge, var(--bg-hover));
+}
+
+.nw-cat-option-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--cat-dot, var(--text-tertiary));
+  flex-shrink: 0;
+}
+
+.nw-cat-option-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nw-cat-option-check {
+  color: var(--cat-dot, var(--text-secondary));
+  flex-shrink: 0;
+}
+
+.nw-cat-empty {
+  padding: var(--space-2) var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.nw-cat-create-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.nw-cat-create-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Active category chips */
+.nw-cat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-2);
+  border-top: 0.5px solid var(--border-subtle);
+}
+
+.nw-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 4px;
+  border-radius: var(--radius-full);
+  background: var(--cat-badge, var(--bg-hover));
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+}
+
+.nw-cat-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--cat-dot, var(--text-tertiary));
+  flex-shrink: 0;
+}
+
+.nw-cat-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 0;
+  border-radius: var(--radius-full);
+  transition: color var(--transition-fast);
+}
+
+.nw-cat-chip-remove:hover {
+  color: var(--text-primary);
+}
