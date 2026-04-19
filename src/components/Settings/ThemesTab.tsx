@@ -8,12 +8,13 @@ interface ThemeMeta {
 }
 
 const THEMES: ThemeMeta[] = [
-  { id: "light",           label: "Default",         pro: false },
-  { id: "dark-graphite",   label: "Dark Graphite",   pro: false },
-  { id: "high-contrast",   label: "High Contrast",   pro: false },
-  { id: "forest",        label: "Forest",        pro: false  },
-  { id: "solarized-light", label: "Solarized Light", pro: false  },
-  { id: "solarized-dark",  label: "Solarized Dark",  pro: false  },
+  { id: "light", label: "Default", pro: false },
+  { id: "dark", label: "Dark", pro: false },
+  { id: "nightsahde", label: "Nightsahde", pro: false },
+  { id: "matcha", label: "Matcha", pro: false },
+  { id: "overcast", label: "Overcast", pro: false },
+  { id: "midnight", label: "Midnight", pro: false },
+
 ];
 
 export function ThemesTab() {
@@ -58,14 +59,12 @@ function ThemeCard({
       {meta.pro && <span className="theme-card-pro-badge">PRO</span>}
 
       <div className="theme-card-preview">
-        <div className="theme-preview-title">Note title</div>
+        <div className="theme-preview-title">{meta.label}</div>
         <div className="theme-preview-body">
           Lorem ipsum <strong>dolor sit amet</strong>,{" "}
-          <em>consectetur</em> adipiscing.
+          consecttetur adipscing elit. Mauris laculis <em>semper</em> pharetra.
         </div>
       </div>
-
-      <div className="theme-card-label">{meta.label}</div>
     </button>
   );
 }

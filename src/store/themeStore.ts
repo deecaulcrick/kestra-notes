@@ -3,11 +3,11 @@ import { saveSettings, getSettings } from "../lib/tauri";
 
 export type ThemeId =
   | "light"
-  | "dark-graphite"
-  | "high-contrast"
-  | "forest"
-  | "solarized-light"
-  | "solarized-dark";
+  | "dark"
+  | "midnight"
+  | "matcha"
+  | "overcast"
+  | "nightsahde";
 
 export interface TypographySettings {
   textFont: string;

@@ -13,7 +13,7 @@
 .ep-titlebar {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   padding: 0 var(--space-4);
   height: 56px;
   flex-shrink: 0;
@@ -65,12 +65,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: var(--radius-sm);
+   width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
   background: transparent;
-  color: var(--text-tertiary);
+  color: var(--text-primary);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
@@ -81,29 +81,96 @@
   color: var(--text-primary);
 }
 
-/* ── Portal dropdown ───────────────────────────────────────────────────────── */
+/* ── Save status pill ──────────────────────────────────────────────────────── */
 
-.ep-portal-dropdown {
-  position: fixed;
-  z-index: 9999;
-  min-width: 200px;
-  background: rgba(255,255,255,0.97);
+.ep-save-status {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.ep-save-status--saving { color: var(--text-secondary); }
+.ep-save-status--saved  { color: var(--text-secondary); }
+.ep-save-status--idle   { color: var(--text-secondary); }
+
+/* ── Generic popover ───────────────────────────────────────────────────────── */
+
+.ep-popover {
+  background: var(--editor-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 0.5px solid var(--border-medium);
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.06);
   overflow: hidden;
 }
 
-[data-theme="dark"] .ep-portal-dropdown,
-[data-theme="dark-graphite"] .ep-portal-dropdown {
-  background: rgba(44,44,46,0.97);
+/* ── Info popover content ──────────────────────────────────────────────────── */
+
+.ep-info-popover {
+  padding: var(--space-3);
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
-/* Actions menu */
+.ep-info-row {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) var(--space-3);
+  gap: var(--space-2);
+  background: var(--accent-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.ep-info-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.ep-info-value {
+  font-size: var(--text-2xl);
+  color: var(--text-primary);
+  font-weight: 700;
+  /* font-variant-numeric: tabular-nums; */
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+/* ── Backlinks popover content ─────────────────────────────────────────────── */
+
+.ep-backlinks-popover {
+  width: 300px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ep-backlinks-popover-header {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.ep-backlinks-popover-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Actions menu ──────────────────────────────────────────────────────────── */
+
 .ep-actions-menu {
   padding: var(--space-1) 0;
+  min-width: 180px;
 }
 
 .ep-action-item {
@@ -139,75 +206,4 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-/* ── Backlinks floating modal ──────────────────────────────────────────────── */
-
-.ep-backlinks-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9990;
-  pointer-events: none;
-}
-
-.ep-backlinks-modal {
-  position: absolute;
-  top: 60px;
-  right: var(--space-4);
-  width: 320px;
-  max-height: calc(100vh - 80px);
-  background: var(--bg-panel, rgba(255,255,255,0.97));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 0.5px solid var(--border-medium);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.06);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  pointer-events: all;
-}
-
-[data-theme="dark"] .ep-backlinks-modal,
-[data-theme="dark-graphite"] .ep-backlinks-modal {
-  background: rgba(44,44,46,0.97);
-}
-
-.ep-backlinks-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 0.5px solid var(--border-subtle);
-  flex-shrink: 0;
-}
-
-.ep-backlinks-modal-title {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-}
-
-.ep-backlinks-modal-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.ep-backlinks-modal-close:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.ep-backlinks-modal-body {
-  flex: 1;
-  overflow-y: auto;
 }

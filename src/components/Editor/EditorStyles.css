@@ -166,7 +166,9 @@
   flex-shrink: 0; 
   background: transparent;
 }
-
+.tiptap a{
+  color: var(--accent);
+}
 
 
 /* Blockquote */
@@ -334,94 +336,15 @@
 
 /* ── Status bar ───────────────────────────────────────────────────────────── */
 
-/* ── Floating bottom buttons (info + toolbar toggle) ─────────────────────── */
+/* ── Persistent bottom-center toolbar (toggled from titlebar) ─────────────── */
 
-.editor-float-btns {
+.editor-persistent-toolbar {
   position: absolute;
-  bottom: var(--space-4);
-  right: var(--space-4);
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  z-index: 50;
+  bottom: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
 }
-
-.editor-float-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-full);
-  border: 0.5px solid var(--border-medium);
-  background: var(--bg-panel, var(--bg-sidebar));
-  color: var(--text-tertiary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast),
-              box-shadow var(--transition-fast);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-}
-
-.editor-float-btn:hover,
-.editor-float-btn.active {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-}
-
-/* ── Floating persistent toolbar ─────────────────────────────────────────── */
-
-.editor-float-toolbar {
-  z-index: 200;
-}
-
-/* ── Info popover ────────────────────────────────────────────────────────── */
-
-.editor-info-popover {
-  position: fixed;
-  z-index: 9999;
-  min-width: 180px;
-  background: var(--bg-panel, rgba(255,255,255,0.97));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 0.5px solid var(--border-medium);
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
-  padding: var(--space-2) 0;
-}
-
-[data-theme="dark"] .editor-info-popover,
-[data-theme="dark-graphite"] .editor-info-popover {
-  background: rgba(44,44,46,0.97);
-}
-
-.editor-info-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-1) var(--space-3);
-  gap: var(--space-4);
-}
-
-.editor-info-label {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-}
-
-.editor-info-value {
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.editor-info-divider {
-  height: 0.5px;
-  background: var(--border-subtle);
-  margin: var(--space-1) 0;
-}
-
-.editor-info-status--saving { color: var(--text-secondary) !important; }
-.editor-info-status--saved  { color: var(--text-success, #1A7A3E) !important; }
 
 /* ── Bubble menu ─────────────────────────────────────────────────────────── */
 
@@ -435,7 +358,7 @@
   align-items: center;
   gap: 2px;
   padding: 4px 6px;
-  background: rgba(255,255,255,0.92);
+  background: var(--editor-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 0.5px solid var(--border-medium);
@@ -443,10 +366,10 @@
   box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
 }
 
-[data-theme="dark"] .bubble-menu,
+/* [data-theme="dark"] .bubble-menu,
 [data-theme="dark-graphite"] .bubble-menu {
   background: rgba(44,44,46,0.92);
-}
+} */
 
 .bubble-menu-divider {
   width: 1px;
@@ -476,14 +399,35 @@
 }
 
 .bubble-menu-btn--active {
-  background: var(--cat-badge, var(--bg-hover));
-  color: var(--cat-dot, var(--accent));
+  background: var(--accent-subtle, var(--bg-hover));
+  color: var(--accent);
+}
+
+/* ── Link input mode ─────────────────────────────────────────────────────── */
+
+.bubble-menu--link {
+  gap: var(--space-1);
+}
+
+.bubble-menu-link-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  width: 220px;
+  padding: 0 var(--space-1);
+  font-family: inherit;
+}
+
+.bubble-menu-link-input::placeholder {
+  color: var(--text-tertiary);
 }
 
 /* ── Slash command menu ───────────────────────────────────────────────────── */
 
 .slash-menu {
-  background: rgba(255,255,255,0.96);
+  background: var(--editor-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 0.5px solid var(--border-medium);
@@ -495,10 +439,10 @@
   overflow-y: auto;
 }
 
-[data-theme="dark"] .slash-menu,
+/* [data-theme="dark"] .slash-menu,
 [data-theme="dark-graphite"] .slash-menu {
   background: rgba(44,44,46,0.96);
-}
+} */
 
 .slash-menu-empty {
   padding: 8px 12px;

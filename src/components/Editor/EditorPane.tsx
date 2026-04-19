@@ -5,7 +5,7 @@ import { BacklinksPanel } from "../BacklinksPanel/BacklinksPanel";
 import { useNoteStore } from "../../store/noteStore";
 import { useUIStore } from "../../store/uiStore";
 import { getNote } from "../../lib/tauri";
-import { Link2, Pin, Trash2, MoreHorizontal, AlignLeft, Info } from "lucide-react";
+import { EllipsisVertical, Pin, Trash2, MessageSquareText, Cable, Info, ALargeSmall, Clock } from "lucide-react";
 import "./EditorPane.css";
 
 interface Props {
@@ -72,27 +72,27 @@ function Popover({
 // ── EditorPane ────────────────────────────────────────────────────────────────
 
 export function EditorPane({ noteId }: Props) {
-  const notes           = useNoteStore((s) => s.notes);
-  const pinNoteStore    = useNoteStore((s) => s.pinNote);
+  const notes = useNoteStore((s) => s.notes);
+  const pinNoteStore = useNoteStore((s) => s.pinNote);
   const deleteNoteStore = useNoteStore((s) => s.deleteNote);
   const setActiveNoteId = useUIStore((s) => s.setActiveNoteId);
 
-  const [noteTitle, setNoteTitle]         = useState("");
+  const [noteTitle, setNoteTitle] = useState("");
   const [toolbarVisible, setToolbarVisible] = useState(false);
   const [backlinksOpen, setBacklinksOpen] = useState(false);
-  const [infoOpen, setInfoOpen]           = useState(false);
-  const [actionsOpen, setActionsOpen]     = useState(false);
-  const [stats, setStats]                 = useState<EditorStats>({ wordCount: 0, readingMins: 1, saveStatus: "idle" });
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [stats, setStats] = useState<EditorStats>({ wordCount: 0, readingMins: 1, saveStatus: "idle" });
 
-  const toolbarBtnRef  = useRef<HTMLButtonElement>(null);
+  const toolbarBtnRef = useRef<HTMLButtonElement>(null);
   const backlinksBtnRef = useRef<HTMLButtonElement>(null);
-  const infoBtnRef     = useRef<HTMLButtonElement>(null);
-  const actionsBtnRef  = useRef<HTMLButtonElement>(null);
+  const infoBtnRef = useRef<HTMLButtonElement>(null);
+  const actionsBtnRef = useRef<HTMLButtonElement>(null);
 
   const activeNote = notes.find((n) => n.id === noteId) ?? null;
 
   useEffect(() => {
-    getNote(noteId).then((note) => setNoteTitle(note.title)).catch(() => {});
+    getNote(noteId).then((note) => setNoteTitle(note.title)).catch(() => { });
   }, [noteId]);
 
   useEffect(() => { setBacklinksOpen(false); }, [noteId]);
@@ -141,7 +141,7 @@ export function EditorPane({ noteId }: Props) {
             title="Note info"
             onClick={() => { setInfoOpen((o) => !o); setBacklinksOpen(false); setActionsOpen(false); }}
           >
-            <Info size={14} />
+            <Info size={16} />
           </button>
 
           {/* Toolbar toggle */}
@@ -151,7 +151,7 @@ export function EditorPane({ noteId }: Props) {
             title="Formatting toolbar"
             onClick={() => setToolbarVisible((v) => !v)}
           >
-            <AlignLeft size={14} />
+            <ALargeSmall size={16} />
           </button>
 
           {/* Backlinks */}
@@ -161,7 +161,7 @@ export function EditorPane({ noteId }: Props) {
             title="Backlinks"
             onClick={() => { setBacklinksOpen((o) => !o); setInfoOpen(false); setActionsOpen(false); }}
           >
-            <Link2 size={14} />
+            <Cable size={16} />
           </button>
 
           {/* Actions */}
@@ -171,7 +171,7 @@ export function EditorPane({ noteId }: Props) {
             title="Note actions"
             onClick={() => { setActionsOpen((o) => !o); setInfoOpen(false); setBacklinksOpen(false); }}
           >
-            <MoreHorizontal size={14} />
+            <EllipsisVertical size={16} />
           </button>
         </div>
       </div>
@@ -181,12 +181,13 @@ export function EditorPane({ noteId }: Props) {
         <Popover anchorRef={infoBtnRef} onClose={() => setInfoOpen(false)} align="right">
           <div className="ep-info-popover">
             <div className="ep-info-row">
-              <span className="ep-info-label">Words</span>
-              <span className="ep-info-value">{stats.wordCount}</span>
+              <div className="ep-info-value">{stats.wordCount} <span><MessageSquareText size={10}/></span></div>
+              <div className="ep-info-label">Words</div>
             </div>
             <div className="ep-info-row">
-              <span className="ep-info-label">Reading time</span>
-              <span className="ep-info-value">~{stats.readingMins} min</span>
+              <div className="ep-info-value">~{stats.readingMins}m <span><Clock size={10}/></span></div>
+              <div className="ep-info-label">Reading time</div>
+              
             </div>
           </div>
         </Popover>
