@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useNoteStore } from "./store/noteStore";
 import { Library } from "./views/Library";
 import { NoteWindowWithVault } from "./views/NoteWindow";
+import { checkForUpdates } from "./lib/updater";
 import "./App.css";
 
 // Detect if this window was opened as a note window via query params.
@@ -27,6 +28,7 @@ function LibraryApp() {
   const openVault = useNoteStore((s) => s.openVault);
 
   useEffect(() => {
+    void checkForUpdates(true);
     const lastPath = localStorage.getItem("lastVaultPath");
     if (lastPath) void openVault(lastPath);
   }, []);
@@ -47,7 +49,7 @@ function LibraryApp() {
   return (
     <div className="vault-picker">
       <div className="vault-picker-card">
-        <h1 className="vault-picker-title">limitless</h1>
+        <h1 className="vault-picker-title">kestra notes</h1>
         <p className="vault-picker-subtitle">A local-first writing tool for connected thought.</p>
 
         {error && <p className="vault-picker-error">{error}</p>}

@@ -37,3 +37,5 @@ nanoid = "0.4"
 
 # File watching — used by the background indexer
 notify = "6"
+tauri-plugin-updater = "2.10.1"
+tauri-plugin-process = "2.3.1"

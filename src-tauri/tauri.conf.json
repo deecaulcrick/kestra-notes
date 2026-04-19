@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "limitless",
+  "productName": "kestra notes",
   "version": "0.1.0",
-  "identifier": "com.dee.limitless",
+  "identifier": "com.dee.kestra-notes",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Limitless",
+        "title": "Kestra Notes",
         "width": 1024,
         "height": 720,
         "decorations": true,
@@ -28,6 +28,15 @@
         "enable": true,
         "scope": ["$HOME/**", "$APPDATA/**"]
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCMjNENzI5RTdCQjg2REEKUldUYWhydm5LZGNqeTJsdXdOaVVBTmQvWURhajM5SjJreFBFejZmNXdBdUdmQWtXOUkrWGJWcWIK",
+      "endpoints": [
+        "https://github.com/deecaulcrick/kestra-notes/releases/latest/download/latest.json"
+      ],
+      "dialog": true
     }
   },
   "bundle": {
