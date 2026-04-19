@@ -22,18 +22,21 @@ pub async fn open_note_window(
     // tag is alphanumeric + hyphens + underscores (URL safe).
     let url_str = format!("index.html?noteId={}&tag={}", note_id, tag);
 
-    tauri::WebviewWindowBuilder::new(
+    let builder = tauri::WebviewWindowBuilder::new(
         &app,
         label,
         tauri::WebviewUrl::App(url_str.into()),
     )
     .title("")
     .inner_size(900.0, 680.0)
-    .min_inner_size(480.0, 360.0)
-    .title_bar_style(tauri::TitleBarStyle::Overlay)
-    .hidden_title(true)
-    .build()
-    .map_err(|e| AppError::Other(e.to_string()))?;
+    .min_inner_size(480.0, 360.0);
+
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true);
+
+    builder.build().map_err(|e| AppError::Other(e.to_string()))?;
 
     Ok(())
 }
