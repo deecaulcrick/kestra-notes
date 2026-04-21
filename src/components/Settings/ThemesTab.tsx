@@ -10,7 +10,7 @@ interface ThemeMeta {
 const THEMES: ThemeMeta[] = [
   { id: "light", label: "Default", pro: false },
   { id: "dark", label: "Dark", pro: false },
-  { id: "nightsahde", label: "Nightsahde", pro: false },
+  { id: "nightshade", label: "Nightshade", pro: false },
   { id: "matcha", label: "Matcha", pro: false },
   { id: "overcast", label: "Overcast", pro: false },
   { id: "midnight", label: "Midnight", pro: false },

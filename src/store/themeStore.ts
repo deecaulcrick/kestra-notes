@@ -7,7 +7,7 @@ export type ThemeId =
   | "midnight"
   | "matcha"
   | "overcast"
-  | "nightsahde";
+  | "nightshade";
 
 export interface TypographySettings {
   textFont: string;

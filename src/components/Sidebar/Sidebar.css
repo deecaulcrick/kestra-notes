@@ -99,7 +99,7 @@
 .sidebar-section-header {
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  color: var(--text-tertiary);
+  color: var(--sidebar-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: var(--space-2) var(--space-4) var(--space-1);
@@ -215,7 +215,4 @@
   justify-content: space-between;
 }
 
-.sidebar-footer-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
+

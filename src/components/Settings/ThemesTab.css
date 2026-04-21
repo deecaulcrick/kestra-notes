@@ -59,10 +59,10 @@
   --accent: #409CFF;
 }
 .theme-card[data-theme="midnight"] .theme-card-preview {
-  --bg-primary: #04001A;
+  --bg-primary: #020d20;
   --text-primary: #F2F2F7;
   --text-secondary: #AEAEB2;
-  --accent: #D3FF58;
+  --accent: #3570d6;
 }
 .theme-card[data-theme="matcha"] .theme-card-preview {
   --bg-primary: #F3FFFC;

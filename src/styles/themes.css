@@ -176,15 +176,15 @@
   --bg-primary:    var(--bg-window);
   --bg-secondary:  var(--bg-content);
   --bg-tertiary:   #3A3A3C;
-  --sidebar-bg:    #0B0436;
-  --sidebar-text: #333;
-  --sidebar-text-secondary: #fff;
-  --notelist-bg:   #04001A;
-  --editor-bg:     #04001A;
+  --sidebar-bg:    #03132f;
+  --sidebar-text: #F2F2F7;
+  --sidebar-text-secondary: #FFF;
+  --notelist-bg:   #020d20;
+  --editor-bg:     #020d20;
   --border:        var(--border-subtle);
   --surface-hover: var(--bg-hover);
   --surface-active:var(--bg-selected);
-  --accent:        #D3FF58;
+  --accent:        #3570d6;
   --accent-subtle: rgba(211,255,88,0.15);
   --scrollbar:     rgba(255,255,255,0.10);
 
@@ -203,7 +203,7 @@
 }
 
 /* High contrast — keep as light alias */
-[data-theme="nightsahde"] {
+[data-theme="nightshade"] {
  --bg-window:    #FDF4FF;
   /*--bg-sidebar:   #333; */
   --bg-content:   #F5F4F0;
