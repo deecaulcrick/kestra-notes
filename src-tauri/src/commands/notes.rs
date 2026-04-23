@@ -333,6 +333,10 @@ fn sanitize_filename(title: &str) -> String {
     if s.is_empty() { "Untitled".to_string() } else { s.to_string() }
 }
 
+pub(crate) fn normalize_relative_path(path: &std::path::Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
 fn sanitize_derived_filename(title: &str) -> String {
     let s: String = title
         .chars()
@@ -707,8 +711,9 @@ pub async fn delete_note(id: String, state: State<'_, AppState>) -> Result<(), A
 #[cfg(test)]
 mod tests {
     use super::{
-        is_generated_untitled_filename, maybe_rename_auto_named_note, sanitize_derived_filename,
-        scan_and_index, unique_markdown_filename, DERIVED_FILENAME_SETTLE_SECS,
+        is_generated_untitled_filename, maybe_rename_auto_named_note, normalize_relative_path,
+        sanitize_derived_filename, scan_and_index, unique_markdown_filename,
+        DERIVED_FILENAME_SETTLE_SECS,
     };
     use crate::db::DbPool;
     use r2d2::Pool;
@@ -766,6 +771,12 @@ mod tests {
         assert_eq!(sanitize_derived_filename("  Today's   todos  "), "Today's todos");
         assert_eq!(sanitize_derived_filename("Project / Notes?"), "Project Notes");
         assert_eq!(sanitize_derived_filename("CON"), "CON note");
+    }
+
+    #[test]
+    fn relative_paths_are_normalized_to_forward_slashes() {
+        let path = std::path::Path::new("notes\\Untitled 2.md");
+        assert_eq!(normalize_relative_path(path), "notes/Untitled 2.md");
     }
 
     #[test]

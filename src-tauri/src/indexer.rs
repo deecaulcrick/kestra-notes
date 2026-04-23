@@ -17,7 +17,7 @@ use std::{
 };
 use tauri::Emitter;
 
-use crate::{commands::notes::{extract_title, extract_preview, index_tags}, db::DbPool, wikilinks};
+use crate::{commands::notes::{extract_title, extract_preview, index_tags, normalize_relative_path}, db::DbPool, wikilinks};
 
 /// Start a file-system watcher for `{vault_path}/notes/`.
 ///
@@ -200,5 +200,5 @@ fn index_changed_files(paths: &[PathBuf], vault_path: &PathBuf, pool: &DbPool) {
 fn rel_path(abs: &PathBuf, vault_path: &PathBuf) -> Option<String> {
     abs.strip_prefix(vault_path)
         .ok()
-        .map(|p| p.to_string_lossy().into_owned())
+        .map(normalize_relative_path)
 }

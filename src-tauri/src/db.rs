@@ -43,6 +43,7 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
     add_column_if_missing(conn, "notes", "derived_rename_started_at", "INTEGER")?;
     add_column_if_missing(conn, "tags",  "color",       "TEXT")?;
     add_column_if_missing(conn, "tags",  "description", "TEXT")?;
+    normalize_note_paths(conn)?;
 
     // Versioned migrations tracked via PRAGMA user_version.
     let user_version: i32 = conn
@@ -58,6 +59,48 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
             rusqlite::params![id],
         )?;
         conn.execute_batch("PRAGMA user_version = 1;")?;
+    }
+
+    Ok(())
+}
+
+fn normalize_note_paths(conn: &Connection) -> Result<(), AppError> {
+    let mut stmt = conn.prepare("SELECT id, file_path, COALESCE(updated_at, 0) FROM notes")?;
+    let rows: Vec<(String, String, i64)> = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        .collect::<Result<_, _>>()?;
+
+    use std::collections::HashMap;
+
+    let mut by_normalized_path: HashMap<String, Vec<(String, String, i64)>> = HashMap::new();
+    for (id, file_path, updated_at) in rows {
+        let normalized = file_path.replace('\\', "/");
+        by_normalized_path
+            .entry(normalized)
+            .or_default()
+            .push((id, file_path, updated_at));
+    }
+
+    for (normalized_path, mut entries) in by_normalized_path {
+        entries.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| a.0.cmp(&b.0)));
+
+        let keep_id = entries[0].0.clone();
+        let keep_path = entries[0].1.clone();
+
+        if keep_path != normalized_path {
+            conn.execute(
+                "UPDATE notes SET file_path = ?1 WHERE id = ?2",
+                rusqlite::params![normalized_path, keep_id],
+            )?;
+        }
+
+        for (id, _, _) in entries.iter().skip(1) {
+            conn.execute("DELETE FROM notes WHERE id = ?1", rusqlite::params![id])?;
+            conn.execute("DELETE FROM outbound_links WHERE source_id = ?1", rusqlite::params![id])?;
+            conn.execute("DELETE FROM backlinks WHERE source_id = ?1 OR target_id = ?1", rusqlite::params![id])?;
+            conn.execute("DELETE FROM fts_index WHERE note_id = ?1", rusqlite::params![id])?;
+            conn.execute("DELETE FROM note_tags WHERE note_id = ?1", rusqlite::params![id])?;
+        }
     }
 
     Ok(())
@@ -85,4 +128,64 @@ fn add_column_if_missing(
         ))?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_note_paths;
+    use rusqlite::Connection;
+
+    #[test]
+    fn normalize_note_paths_merges_mixed_separator_duplicates() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "
+            CREATE TABLE notes (
+              id TEXT PRIMARY KEY,
+              file_path TEXT UNIQUE NOT NULL,
+              title TEXT,
+              preview TEXT,
+              has_todos INTEGER DEFAULT 0,
+              created_at INTEGER,
+              updated_at INTEGER,
+              file_hash TEXT
+            );
+            CREATE TABLE outbound_links (source_id TEXT NOT NULL, link_text TEXT NOT NULL, resolved_id TEXT);
+            CREATE TABLE backlinks (source_id TEXT NOT NULL, target_id TEXT NOT NULL, PRIMARY KEY (source_id, target_id));
+            CREATE VIRTUAL TABLE fts_index USING fts5(note_id UNINDEXED, title, body);
+            CREATE TABLE note_tags (note_id TEXT NOT NULL, tag_id TEXT NOT NULL, PRIMARY KEY (note_id, tag_id));
+            ",
+        )
+        .unwrap();
+
+        conn.execute(
+            "INSERT INTO notes (id, file_path, updated_at) VALUES (?1, ?2, ?3)",
+            rusqlite::params!["old", r"notes\Untitled.md", 1_i64],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO notes (id, file_path, updated_at) VALUES (?1, ?2, ?3)",
+            rusqlite::params!["new", "notes/Untitled.md", 2_i64],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO outbound_links (source_id, link_text, resolved_id) VALUES (?1, ?2, NULL)",
+            rusqlite::params!["old", "Untitled"],
+        )
+        .unwrap();
+
+        normalize_note_paths(&conn).unwrap();
+
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0)).unwrap();
+        let remaining_id: String = conn
+            .query_row("SELECT id FROM notes WHERE file_path = 'notes/Untitled.md'", [], |row| row.get(0))
+            .unwrap();
+        let dangling_links: i64 = conn
+            .query_row("SELECT COUNT(*) FROM outbound_links WHERE source_id = 'old'", [], |row| row.get(0))
+            .unwrap();
+
+        assert_eq!(count, 1);
+        assert_eq!(remaining_id, "new");
+        assert_eq!(dangling_links, 0);
+    }
 }
