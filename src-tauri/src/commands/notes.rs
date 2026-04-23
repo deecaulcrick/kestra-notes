@@ -4,6 +4,8 @@ use tauri::State;
 
 use crate::{db::DbPool, error::AppError, wikilinks, AppState};
 
+const DERIVED_FILENAME_SETTLE_SECS: i64 = 8;
+
 // ── Shared types ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -55,54 +57,19 @@ pub fn scan_and_index(vault_path: &std::path::Path, pool: &DbPool) -> Result<usi
     let mut count = 0;
 
     // ── Pass 0: purge bad notes ───────────────────────────────────────────────
-    // a) Remove entries whose file no longer exists on disk.
-    // b) Deduplicate: when multiple DB entries share the same title, keep the
-    //    one whose file content actually has that title as a heading; delete the
-    //    rest. This fixes ghost duplicates created by repeated wikilink clicks.
+    // Remove entries whose file no longer exists on disk. Note titles are not
+    // unique identifiers; multiple notes may legitimately share the same title.
     {
-        let mut stmt = conn.prepare("SELECT id, file_path, COALESCE(title,'') FROM notes")?;
-        let all_notes: Vec<(String, String, String)> = stmt
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+        let mut stmt = conn.prepare("SELECT id, file_path FROM notes")?;
+        let all_notes: Vec<(String, String)> = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
             .collect::<Result<Vec<_>, _>>()?;
 
         let mut ids_to_delete: Vec<String> = Vec::new();
 
-        // a) Missing files
-        for (id, file_path, _) in &all_notes {
+        for (id, file_path) in &all_notes {
             if !vault_path.join(file_path).exists() {
                 ids_to_delete.push(id.clone());
-            }
-        }
-
-        // b) Duplicate titles — group by title, keep the best one
-        use std::collections::HashMap;
-        let mut by_title: HashMap<String, Vec<(String, String)>> = HashMap::new();
-        for (id, file_path, title) in &all_notes {
-            if title.is_empty() { continue; }
-            by_title.entry(title.clone()).or_default().push((id.clone(), file_path.clone()));
-        }
-        for (_title, entries) in by_title {
-            if entries.len() <= 1 { continue; }
-            // Score each: prefer the one whose file actually starts with "# <title>"
-            let mut best_id: Option<String> = None;
-            for (id, file_path) in &entries {
-                let abs = vault_path.join(file_path);
-                if let Ok(content) = std::fs::read_to_string(&abs) {
-                    let first_line = content.lines().next().unwrap_or("").trim();
-                    let heading = format!("# {}", _title);
-                    if first_line == heading {
-                        best_id = Some(id.clone());
-                        break;
-                    }
-                }
-            }
-            // If none match heading, keep the first (arbitrary but consistent)
-            let keep = best_id.unwrap_or_else(|| entries[0].0.clone());
-            for (id, _) in &entries {
-                if *id != keep {
-                    println!("[scan] dedup: removing ghost note id={} (duplicate title)", &id[..8.min(id.len())]);
-                    ids_to_delete.push(id.clone());
-                }
             }
         }
 
@@ -366,6 +333,148 @@ fn sanitize_filename(title: &str) -> String {
     if s.is_empty() { "Untitled".to_string() } else { s.to_string() }
 }
 
+fn sanitize_derived_filename(title: &str) -> String {
+    let s: String = title
+        .chars()
+        .filter_map(|c| match c {
+            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => None,
+            c if c.is_control() => None,
+            c if c.is_whitespace() => Some(' '),
+            c => Some(c),
+        })
+        .collect();
+    let s = s
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim_matches(|c| c == ' ' || c == '.')
+        .chars()
+        .take(120)
+        .collect::<String>();
+    let s = s.trim_matches(|c| c == ' ' || c == '.');
+    let s = if s.is_empty() { "Untitled" } else { s };
+
+    if is_windows_reserved_filename(s) {
+        format!("{} note", s)
+    } else {
+        s.to_string()
+    }
+}
+
+fn is_windows_reserved_filename(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    matches!(
+        upper.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL"
+            | "COM1" | "COM2" | "COM3" | "COM4" | "COM5" | "COM6" | "COM7" | "COM8" | "COM9"
+            | "LPT1" | "LPT2" | "LPT3" | "LPT4" | "LPT5" | "LPT6" | "LPT7" | "LPT8" | "LPT9"
+    )
+}
+
+fn is_generated_untitled_filename(file_path: &str) -> bool {
+    let Some(stem) = std::path::Path::new(file_path).file_stem().and_then(|s| s.to_str()) else {
+        return false;
+    };
+
+    if stem == "Untitled" {
+        return true;
+    }
+
+    let Some(suffix) = stem.strip_prefix("Untitled ") else {
+        return false;
+    };
+
+    !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit())
+}
+
+fn filename_exists_case_insensitive(dir: &std::path::Path, filename: &str) -> bool {
+    let target = filename.to_ascii_lowercase();
+    std::fs::read_dir(dir)
+        .map(|entries| {
+            entries.flatten().any(|entry| {
+                entry.file_name().to_string_lossy().to_ascii_lowercase() == target
+            })
+        })
+        .unwrap_or(false)
+}
+
+fn unique_markdown_filename(dir: &std::path::Path, base_name: &str, current_filename: Option<&str>) -> String {
+    let mut filename = format!("{}.md", base_name);
+    let mut counter = 2u32;
+
+    while filename_exists_case_insensitive(dir, &filename) {
+        if current_filename.is_some_and(|current| current.eq_ignore_ascii_case(&filename)) {
+            return filename;
+        }
+
+        filename = format!("{} {}.md", base_name, counter);
+        counter += 1;
+    }
+
+    filename
+}
+
+fn maybe_rename_auto_named_note(
+    vault_path: &std::path::Path,
+    file_path: &str,
+    title: &str,
+    naming_mode: &str,
+    derived_rename_started_at: Option<i64>,
+    now: i64,
+) -> (String, String, Option<i64>) {
+    let is_settling = naming_mode == "settling"
+        && derived_rename_started_at
+            .map(|started| now - started <= DERIVED_FILENAME_SETTLE_SECS)
+            .unwrap_or(false);
+
+    if title.trim().is_empty() {
+        return (file_path.to_string(), naming_mode.to_string(), derived_rename_started_at);
+    }
+
+    if !is_generated_untitled_filename(file_path) && !is_settling {
+        let mode = if naming_mode == "settling" { "locked" } else { naming_mode };
+        return (file_path.to_string(), mode.to_string(), derived_rename_started_at);
+    }
+
+    let notes_dir = vault_path.join("notes");
+    let base_name = sanitize_derived_filename(title);
+
+    if base_name == "Untitled" || base_name.starts_with("Untitled ") {
+        return (file_path.to_string(), naming_mode.to_string(), derived_rename_started_at);
+    }
+
+    let current_filename = std::path::Path::new(file_path)
+        .file_name()
+        .and_then(|s| s.to_str());
+    let filename = unique_markdown_filename(&notes_dir, &base_name, current_filename);
+    let new_file_path = format!("notes/{}", filename);
+
+    let started_at = derived_rename_started_at.unwrap_or(now);
+    let next_mode = if now - started_at <= DERIVED_FILENAME_SETTLE_SECS {
+        "settling"
+    } else {
+        "locked"
+    };
+
+    if new_file_path == file_path {
+        return (file_path.to_string(), next_mode.to_string(), Some(started_at));
+    }
+
+    let old_abs = vault_path.join(file_path);
+    let new_abs = vault_path.join(&new_file_path);
+
+    match std::fs::rename(&old_abs, &new_abs) {
+        Ok(()) => (new_file_path, next_mode.to_string(), Some(started_at)),
+        Err(err) => {
+            eprintln!(
+                "[save_note] failed to rename generated note file from {:?} to {:?}: {}",
+                old_abs, new_abs, err
+            );
+            (file_path.to_string(), naming_mode.to_string(), derived_rename_started_at)
+        }
+    }
+}
+
 fn now_secs() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -403,10 +512,10 @@ pub async fn save_note(
 
     let conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
-    let file_path: String = conn.query_row(
-        "SELECT file_path FROM notes WHERE id=?1",
+    let (mut file_path, mut file_naming_mode, mut derived_rename_started_at): (String, String, Option<i64>) = conn.query_row(
+        "SELECT file_path, COALESCE(file_naming_mode, 'untitled'), derived_rename_started_at FROM notes WHERE id=?1",
         rusqlite::params![id],
-        |row| row.get(0),
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )?;
 
     std::fs::write(vault_path.join(&file_path), content.as_bytes())?;
@@ -419,10 +528,18 @@ pub async fn save_note(
     let title = extract_title(&content, &stem);
     let preview = extract_preview(&content);
     let has_todos = content.contains("- [ ]") as i64;
+    (file_path, file_naming_mode, derived_rename_started_at) = maybe_rename_auto_named_note(
+        &vault_path,
+        &file_path,
+        &title,
+        &file_naming_mode,
+        derived_rename_started_at,
+        now,
+    );
 
     conn.execute(
-        "UPDATE notes SET title=?1, preview=?2, has_todos=?3, updated_at=?4, file_hash=?5 WHERE id=?6",
-        rusqlite::params![title, preview, has_todos, now, file_hash, id],
+        "UPDATE notes SET title=?1, preview=?2, has_todos=?3, updated_at=?4, file_hash=?5, file_path=?6, file_naming_mode=?7, derived_rename_started_at=?8 WHERE id=?9",
+        rusqlite::params![title, preview, has_todos, now, file_hash, file_path, file_naming_mode, derived_rename_started_at, id],
     )?;
 
     let _ = wikilinks::index_note(&id, &title, &content, &conn);
@@ -437,37 +554,6 @@ pub async fn create_note(title: String, state: State<'_, AppState>) -> Result<No
     let vault_path = { let g = state.vault_path.lock().unwrap(); g.as_ref().ok_or(AppError::VaultNotOpen)?.clone() };
 
     let conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
-
-    // If a note with this exact title already exists, return it — don't duplicate.
-    let existing: Option<(String, String)> = conn
-        .query_row(
-            "SELECT id, file_path FROM notes WHERE title = ?1 LIMIT 1",
-            rusqlite::params![title],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .optional()?;
-
-    if let Some((id, file_path)) = existing {
-        // Load its real values from the DB.
-        let (preview, has_todos, created_at, updated_at): (String, i64, i64, i64) = conn
-            .query_row(
-                "SELECT COALESCE(preview,''), has_todos, created_at, updated_at FROM notes WHERE id=?1",
-                rusqlite::params![id],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-            )
-            .unwrap_or_else(|_| (String::new(), 0, 0, 0));
-        return Ok(Note {
-            id,
-            file_path,
-            title,
-            preview,
-            has_todos: has_todos != 0,
-            pinned: false,
-            created_at,
-            updated_at,
-            tags: vec![],
-        });
-    }
 
     let notes_dir = vault_path.join("notes");
     let safe_name = sanitize_filename(&title);
@@ -616,4 +702,155 @@ pub async fn delete_note(id: String, state: State<'_, AppState>) -> Result<(), A
     conn.execute("DELETE FROM note_tags WHERE note_id = ?1", rusqlite::params![id])?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        is_generated_untitled_filename, maybe_rename_auto_named_note, sanitize_derived_filename,
+        scan_and_index, unique_markdown_filename, DERIVED_FILENAME_SETTLE_SECS,
+    };
+    use crate::db::DbPool;
+    use r2d2::Pool;
+    use r2d2_sqlite::SqliteConnectionManager;
+
+    fn unique_test_vault(prefix: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!(
+            "{}-{}",
+            prefix,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
+
+    fn test_pool() -> DbPool {
+        let manager = SqliteConnectionManager::memory();
+        let pool = Pool::new(manager).unwrap();
+        let conn = pool.get().unwrap();
+        conn.execute_batch(
+            "
+            CREATE TABLE notes (
+              id TEXT PRIMARY KEY,
+              file_path TEXT UNIQUE NOT NULL,
+              title TEXT,
+              preview TEXT,
+              has_todos INTEGER DEFAULT 0,
+              created_at INTEGER,
+              updated_at INTEGER,
+              file_hash TEXT
+            );
+            CREATE TABLE outbound_links (source_id TEXT NOT NULL, link_text TEXT NOT NULL, resolved_id TEXT);
+            CREATE TABLE backlinks (source_id TEXT NOT NULL, target_id TEXT NOT NULL, PRIMARY KEY (source_id, target_id));
+            CREATE VIRTUAL TABLE fts_index USING fts5(note_id UNINDEXED, title, body);
+            CREATE TABLE tags (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, parent_name TEXT, color TEXT, description TEXT);
+            CREATE TABLE note_tags (note_id TEXT NOT NULL, tag_id TEXT NOT NULL, PRIMARY KEY (note_id, tag_id));
+            ",
+        )
+        .unwrap();
+        drop(conn);
+        pool
+    }
+
+    #[test]
+    fn generated_untitled_detection_is_narrow() {
+        assert!(is_generated_untitled_filename("notes/Untitled.md"));
+        assert!(is_generated_untitled_filename("notes/Untitled 6.md"));
+        assert!(!is_generated_untitled_filename("notes/Untitled todos.md"));
+        assert!(!is_generated_untitled_filename("notes/Today's todos.md"));
+    }
+
+    #[test]
+    fn sanitize_derived_filename_keeps_readable_names_safe() {
+        assert_eq!(sanitize_derived_filename("  Today's   todos  "), "Today's todos");
+        assert_eq!(sanitize_derived_filename("Project / Notes?"), "Project Notes");
+        assert_eq!(sanitize_derived_filename("CON"), "CON note");
+    }
+
+    #[test]
+    fn derived_filename_can_settle_before_locking() {
+        let vault = unique_test_vault("limitless-rename-test");
+        let notes_dir = vault.join("notes");
+        std::fs::create_dir_all(&notes_dir).unwrap();
+        std::fs::write(notes_dir.join("Untitled.md"), "# Personal\n").unwrap();
+
+        let (file_path, mode, started_at) = maybe_rename_auto_named_note(
+            &vault,
+            "notes/Untitled.md",
+            "Personal",
+            "untitled",
+            None,
+            100,
+        );
+        assert_eq!(file_path, "notes/Personal.md");
+        assert_eq!(mode, "settling");
+        assert_eq!(started_at, Some(100));
+
+        let (file_path, mode, started_at) = maybe_rename_auto_named_note(
+            &vault,
+            &file_path,
+            "Personal Software",
+            &mode,
+            started_at,
+            102,
+        );
+        assert_eq!(file_path, "notes/Personal Software.md");
+        assert_eq!(mode, "settling");
+        assert_eq!(started_at, Some(100));
+
+        let (locked_path, mode, _) = maybe_rename_auto_named_note(
+            &vault,
+            &file_path,
+            "Personal Software Project",
+            &mode,
+            started_at,
+            100 + DERIVED_FILENAME_SETTLE_SECS + 1,
+        );
+        assert_eq!(locked_path, file_path);
+        assert_eq!(mode, "locked");
+
+        std::fs::remove_dir_all(vault).unwrap();
+    }
+
+    #[test]
+    fn scan_keeps_distinct_notes_with_duplicate_titles() {
+        let vault = unique_test_vault("limitless-duplicate-title-test");
+        let notes_dir = vault.join("notes");
+        std::fs::create_dir_all(&notes_dir).unwrap();
+        std::fs::write(notes_dir.join("Untitled.md"), "# Untitled\n\nFirst").unwrap();
+        std::fs::write(notes_dir.join("Untitled 2.md"), "# Untitled\n\nSecond").unwrap();
+
+        let pool = test_pool();
+        let count = scan_and_index(&vault, &pool).unwrap();
+        assert_eq!(count, 2);
+
+        let conn = pool.get().unwrap();
+        let total: i64 = conn.query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0)).unwrap();
+        let duplicate_title_total: i64 = conn
+            .query_row("SELECT COUNT(*) FROM notes WHERE title = 'Untitled'", [], |row| row.get(0))
+            .unwrap();
+        let distinct_paths: i64 = conn
+            .query_row("SELECT COUNT(DISTINCT file_path) FROM notes", [], |row| row.get(0))
+            .unwrap();
+
+        assert_eq!(total, 2);
+        assert_eq!(duplicate_title_total, 2);
+        assert_eq!(distinct_paths, 2);
+
+        std::fs::remove_dir_all(vault).unwrap();
+    }
+
+    #[test]
+    fn duplicate_filenames_get_readable_suffixes() {
+        let vault = unique_test_vault("limitless-filename-test");
+        let notes_dir = vault.join("notes");
+        std::fs::create_dir_all(&notes_dir).unwrap();
+        std::fs::write(notes_dir.join("Untitled.md"), "").unwrap();
+        std::fs::write(notes_dir.join("Untitled 2.md"), "").unwrap();
+
+        assert_eq!(unique_markdown_filename(&notes_dir, "Untitled", None), "Untitled 3.md");
+
+        std::fs::remove_dir_all(vault).unwrap();
+    }
 }
