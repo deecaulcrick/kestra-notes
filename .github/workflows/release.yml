@@ -51,3 +51,4 @@ jobs:
           releaseDraft: true        # creates a draft — you review and publish manually
           prerelease: false
           includeUpdaterJson: true  # generates latest.json automatically
+          args: ${{ matrix.args }}
