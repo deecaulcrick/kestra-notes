@@ -52,6 +52,12 @@
   margin-bottom: auto;
 }
 
+.tiptap.ProseMirror::after {
+  content: "";
+  display: block;
+  height: clamp(96px, 14vh, 160px);
+}
+
 .tiptap h1 {
   font-family: 'Nunito Sans', sans-serif;
   font-size: 2rem;
