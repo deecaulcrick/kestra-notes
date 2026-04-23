@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { getNote, saveNote } from "../lib/tauri";
 import { useNoteStore } from "../store/noteStore";
+import { normalizeMarkdownForEditor } from "../components/Editor/markdownWhitespace";
 
 export type SaveStatus = "idle" | "saving" | "saved";
 
@@ -30,7 +31,7 @@ export function useNote(noteId: string | null, editor: Editor | null) {
       .then((note) => {
         if (cancelled) return;
         // setContent will trigger onUpdate — the flag suppresses the save.
-        editor.commands.setContent(note.content);
+        editor.commands.setContent(normalizeMarkdownForEditor(note.content));
         // Give the editor one tick to settle before allowing saves.
         setTimeout(() => {
           if (!cancelled) isLoadingRef.current = false;

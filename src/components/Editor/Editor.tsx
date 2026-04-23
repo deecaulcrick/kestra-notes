@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Paragraph from "@tiptap/extension-paragraph";
+import Text from "@tiptap/extension-text";
 import Typography from "@tiptap/extension-typography";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
@@ -19,6 +21,8 @@ import Superscript from "@tiptap/extension-superscript";
 import TextAlign from "@tiptap/extension-text-align";
 import CharacterCount from "@tiptap/extension-character-count";
 import Focus from "@tiptap/extension-focus";
+import { defaultMarkdownSerializer, type MarkdownSerializerState } from "prosemirror-markdown";
+import type { Node as ProseMirrorNode } from "prosemirror-model";
 import { createLowlight, common } from "lowlight";
 import { Markdown } from "tiptap-markdown";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -30,6 +34,7 @@ import { SlashCommands, registerImageRequestHandler } from "./extensions/SlashCo
 import { Callout } from "./extensions/Callout";
 import { ImageUpload, insertFromPath } from "./extensions/ImageUpload";
 import { EditorToolbar } from "./EditorToolbar";
+import { EMPTY_TASK_MARKDOWN, NBSP, escapeHTML, preserveMarkdownSpaces } from "./markdownWhitespace";
 import { useNote } from "../../hooks/useNote";
 import { useNoteStore } from "../../store/noteStore";
 import { useThemeStore } from "../../store/themeStore";
@@ -38,6 +43,96 @@ import "./EditorStyles.css";
 const lowlight = createLowlight(common);
 
 type MarkdownStorage = { getMarkdown(): string };
+
+function isStructurallyEmpty(node: ProseMirrorNode): boolean {
+  let hasContent = false;
+
+  node.descendants((child) => {
+    if (child.isText) {
+      if ((child.text ?? "").split(NBSP).join("").trim().length > 0) {
+        hasContent = true;
+      }
+      return !hasContent;
+    }
+
+    if (child.isAtom || child.isLeaf) {
+      hasContent = true;
+    }
+
+    return !hasContent;
+  });
+
+  return !hasContent;
+}
+
+const MarkdownText = Text.extend({
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: MarkdownSerializerState, node: ProseMirrorNode) {
+          state.text(escapeHTML(preserveMarkdownSpaces(node.text ?? "")));
+        },
+        parse: {},
+      },
+    };
+  },
+});
+
+const MarkdownParagraph = Paragraph.extend({
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: MarkdownSerializerState, node: ProseMirrorNode, parent: ProseMirrorNode, index: number) {
+          if (node.content.size === 0) {
+            state.write("<p></p>");
+            state.closeBlock(node);
+            return;
+          }
+
+          defaultMarkdownSerializer.nodes.paragraph(state, node, parent, index);
+        },
+        parse: {},
+      },
+    };
+  },
+});
+
+const MarkdownTaskItem = TaskItem.extend({
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: MarkdownSerializerState, node: ProseMirrorNode) {
+          const check = node.attrs.checked ? "[x]" : "[ ]";
+
+          if (isStructurallyEmpty(node)) {
+            state.write(`${check} ${EMPTY_TASK_MARKDOWN}`);
+            return;
+          }
+
+          state.write(`${check} `);
+          state.renderContent(node);
+        },
+        parse: {
+          updateDOM(element: HTMLElement) {
+            [...element.querySelectorAll(".task-list-item")].forEach((item) => {
+              const input = item.querySelector("input");
+              item.setAttribute("data-type", "taskItem");
+
+              if (input) {
+                item.setAttribute("data-checked", String(input.checked));
+                input.remove();
+              }
+
+              if (item.textContent?.split(NBSP).join("").trim() === "" && !item.querySelector("img, table, pre")) {
+                item.innerHTML = "";
+              }
+            });
+          },
+        },
+      },
+    };
+  },
+});
 
 export interface EditorStats {
   wordCount: number;
@@ -77,7 +172,9 @@ export function Editor({ noteId, onNavigate, toolbarVisible = false, onStatsChan
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: false }),
+      StarterKit.configure({ codeBlock: false, paragraph: false, text: false }),
+      MarkdownParagraph,
+      MarkdownText,
       Typography,
       Placeholder.configure({
         placeholder: ({ node }) => {
@@ -87,7 +184,7 @@ export function Editor({ noteId, onNavigate, toolbarVisible = false, onStatsChan
         showOnlyCurrent: true,
       }),
       TaskList,
-      TaskItem.configure({ nested: true }),
+      MarkdownTaskItem.configure({ nested: true }),
       Table.configure({ resizable: true }),
       TableRow,
       TableCell,
