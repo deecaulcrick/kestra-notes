@@ -6,6 +6,11 @@ import { normalizeMarkdownForEditor } from "../components/Editor/markdownWhitesp
 
 export type SaveStatus = "idle" | "saving" | "saved";
 
+interface UseNoteOptions {
+  onBeforeLoad?: () => void;
+  onAfterLoad?: (noteId: string, editor: Editor) => void;
+}
+
 /**
  * Manages loading and saving a note into a Tiptap editor.
  *
@@ -13,29 +18,40 @@ export type SaveStatus = "idle" | "saving" | "saved";
  * - Exposes `scheduleSave(content)` which debounces 300ms then calls `save_note`.
  * - Loading is guarded by a ref so it doesn't trigger a spurious save.
  */
-export function useNote(noteId: string | null, editor: Editor | null) {
+export function useNote(noteId: string | null, editor: Editor | null, options: UseNoteOptions = {}) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const beforeLoadRef = useRef(options.onBeforeLoad);
+  const afterLoadRef = useRef(options.onAfterLoad);
   // True while setContent() is in progress — prevents the update callback
   // from triggering a save for content we just loaded from disk.
   const isLoadingRef = useRef<boolean>(false);
   const loadNotes = useNoteStore((s) => s.loadNotes);
+
+  beforeLoadRef.current = options.onBeforeLoad;
+  afterLoadRef.current = options.onAfterLoad;
 
   useEffect(() => {
     if (!noteId || !editor) return;
 
     let cancelled = false;
     isLoadingRef.current = true;
+    beforeLoadRef.current?.();
+    editor.commands.blur();
+    window.getSelection()?.removeAllRanges();
 
     getNote(noteId)
       .then((note) => {
         if (cancelled) return;
         // setContent will trigger onUpdate — the flag suppresses the save.
         editor.commands.setContent(normalizeMarkdownForEditor(note.content));
-        // Give the editor one tick to settle before allowing saves.
-        setTimeout(() => {
-          if (!cancelled) isLoadingRef.current = false;
-        }, 50);
+        requestAnimationFrame(() => {
+          if (cancelled || editor.isDestroyed) return;
+          afterLoadRef.current?.(noteId, editor);
+          setTimeout(() => {
+            if (!cancelled) isLoadingRef.current = false;
+          }, 50);
+        });
       })
       .catch((err) => {
         console.error("Failed to load note:", err);

@@ -140,6 +140,11 @@ export interface EditorStats {
   saveStatus: "idle" | "saving" | "saved";
 }
 
+interface SavedSelection {
+  from: number;
+  to: number;
+}
+
 interface Props {
   noteId: string | null;
   onNavigate?: (id: string) => void;
@@ -151,6 +156,9 @@ interface Props {
 
 export function Editor({ noteId, onNavigate, toolbarVisible = false, onStatsChange }: Props) {
   const scheduleSaveRef = useRef<((content: string) => void) | undefined>(undefined);
+  const selectionByNoteRef = useRef<Record<string, SavedSelection>>({});
+  const activeNoteIdRef = useRef<string | null>(noteId);
+  const suppressSelectionUIRef = useRef<boolean>(false);
   const [bubbleRect, setBubbleRect] = useState<DOMRect | null>(null);
 
   const { setActiveNote } = useNoteStore();
@@ -236,6 +244,16 @@ export function Editor({ noteId, onNavigate, toolbarVisible = false, onStatsChan
     },
 
     onSelectionUpdate: ({ editor }) => {
+      if (suppressSelectionUIRef.current) {
+        setBubbleRect(null);
+        return;
+      }
+
+      if (noteIdRef.current) {
+        const { from, to } = editor.state.selection;
+        selectionByNoteRef.current[noteIdRef.current] = { from, to };
+      }
+
       if (editor.state.selection.empty || editor.isActive("codeBlock")) {
         setBubbleRect(null); return;
       }
@@ -249,7 +267,37 @@ export function Editor({ noteId, onNavigate, toolbarVisible = false, onStatsChan
     content: "",
   });
 
-  const { saveStatus, scheduleSave } = useNote(noteId, editor);
+  useEffect(() => {
+    const previousNoteId = activeNoteIdRef.current;
+    if (editor && previousNoteId && previousNoteId !== noteId) {
+      const { from, to } = editor.state.selection;
+      selectionByNoteRef.current[previousNoteId] = { from, to };
+    }
+    activeNoteIdRef.current = noteId;
+    suppressSelectionUIRef.current = true;
+    setBubbleRect(null);
+  }, [noteId, editor]);
+
+  const { saveStatus, scheduleSave } = useNote(noteId, editor, {
+    onBeforeLoad: () => {
+      suppressSelectionUIRef.current = true;
+      setBubbleRect(null);
+    },
+    onAfterLoad: (loadedNoteId, loadedEditor) => {
+      const docSize = loadedEditor.state.doc.content.size;
+      const savedSelection = selectionByNoteRef.current[loadedNoteId];
+      const anchor = savedSelection
+        ? {
+            from: Math.max(1, Math.min(savedSelection.from, docSize)),
+            to: Math.max(1, Math.min(savedSelection.to, docSize)),
+          }
+        : { from: 1, to: 1 };
+
+      loadedEditor.commands.setTextSelection(anchor);
+      window.getSelection()?.removeAllRanges();
+      suppressSelectionUIRef.current = false;
+    },
+  });
   scheduleSaveRef.current = scheduleSave;
 
   // Report stats up to EditorPane
