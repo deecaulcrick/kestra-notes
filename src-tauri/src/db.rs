@@ -41,6 +41,7 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
     add_column_if_missing(conn, "notes", "pinned",      "INTEGER DEFAULT 0")?;
     add_column_if_missing(conn, "notes", "file_naming_mode", "TEXT DEFAULT 'untitled'")?;
     add_column_if_missing(conn, "notes", "derived_rename_started_at", "INTEGER")?;
+    add_column_if_missing(conn, "canvas_positions", "z_index", "INTEGER DEFAULT 0")?;
     add_column_if_missing(conn, "tags",  "color",       "TEXT")?;
     add_column_if_missing(conn, "tags",  "description", "TEXT")?;
     normalize_note_paths(conn)?;
