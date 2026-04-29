@@ -28,12 +28,13 @@ pub async fn open_note_window(
         tauri::WebviewUrl::App(url_str.into()),
     )
     .title("")
-    .inner_size(900.0, 680.0)
+    .inner_size(600.0, 720.0)
     .min_inner_size(480.0, 360.0);
 
     #[cfg(target_os = "macos")]
     let builder = builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .traffic_light_position(tauri::LogicalPosition::new(18.0, 28.0))
         .hidden_title(true);
 
     builder.build().map_err(|e| AppError::Other(e.to_string()))?;

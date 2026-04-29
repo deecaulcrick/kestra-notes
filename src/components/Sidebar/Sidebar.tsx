@@ -3,7 +3,7 @@ import { useNoteStore } from "../../store/noteStore";
 import { useUIStore, type SidebarSection } from "../../store/uiStore";
 import { useCategoryStore } from "../../store/categoryStore";
 import type { Tag } from "../../lib/tauri";
-import { Settings, NotebookText, SquareCheck, CalendarFold, Pin, Inbox, Hash, LucideIcon } from "lucide-react";
+import { Settings, NotebookText, SquareCheck, CalendarFold, Pin, Inbox, Hash, LucideIcon, PanelsTopLeft, ChevronRight } from "lucide-react";
 import "./Sidebar.css";
 
 interface Props {
@@ -24,8 +24,10 @@ export function Sidebar({ onSettings }: Props) {
 
   const activeSection = useUIStore((s) => s.activeSection);
   const activeTagName = useUIStore((s) => s.activeTagName);
+  const activeView = useUIStore((s) => s.activeView);
   const setSection = useUIStore((s) => s.setSection);
   const setActiveTag = useUIStore((s) => s.setActiveTag);
+  const setActiveView = useUIStore((s) => s.setActiveView);
 
   const categories = useCategoryStore((s) => s.categories);
   const loadCategories = useCategoryStore((s) => s.loadCategories);
@@ -53,7 +55,18 @@ export function Sidebar({ onSettings }: Props) {
     <div className="sidebar-wrapper">
       <aside className="sidebar">
         {/* Space for native traffic lights repositioned by mac-rounded-corners plugin */}
-        <div className="sidebar-traffic-lights" data-tauri-drag-region />
+        <div className="sidebar-traffic-lights" data-tauri-drag-region >
+          <div className="sidebar-canvas-entry">
+            <button
+              className={`sidebar-footer-shortcut${activeView === "canvas" ? " active" : ""}`}
+              onClick={() => setActiveView("canvas")}
+              title="Canvas view"
+              aria-label="Open canvas view"
+            >
+              <PanelsTopLeft size={20} strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
 
         {/* System sections */}
         <nav className="sidebar-system-list">
@@ -95,6 +108,7 @@ export function Sidebar({ onSettings }: Props) {
             </div>
           </>
         )}
+
 
         {/* Footer */}
         <div className="sidebar-footer">
@@ -139,7 +153,7 @@ function TagRow({
             className={`sidebar-tag-chevron${expanded ? " expanded" : ""}`}
             onClick={(e) => { e.stopPropagation(); onToggle(tag.name); }}
           >
-            ›
+            <ChevronRight size={14} strokeWidth={1.5} />
           </span>
         )}
         {!hasChildren && <span className="sidebar-tag-spacer" />}

@@ -1,0 +1,232 @@
+.canvas-view {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--editor-bg);
+}
+
+.canvas-toolbar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.canvas-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.canvas-tool-btn,
+.canvas-zoom-indicator,
+.canvas-search,
+.canvas-board-select {
+  height: 32px;
+  border: 0.5px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--editor-bg) 90%, transparent);
+  color: var(--text-primary);
+  backdrop-filter: blur(8px);
+}
+
+.canvas-tool-btn {
+  width: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.canvas-zoom-indicator {
+  min-width: 54px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: var(--text-sm);
+}
+
+.canvas-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+
+.canvas-board-picker {
+  display: flex;
+  align-items: center;
+}
+
+.canvas-board-select {
+  min-width: 160px;
+  padding: 0 28px 0 10px;
+  border-radius: 8px;
+  outline: none;
+  font: inherit;
+  appearance: none;
+}
+
+.canvas-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: inherit;
+  outline: none;
+  font: inherit;
+}
+
+.canvas-surface {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.canvas-surface:active {
+  cursor: grabbing;
+}
+
+.canvas-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border-subtle) 70%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border-subtle) 70%, transparent) 1px, transparent 1px);
+}
+
+.canvas-stage {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+}
+
+.canvas-edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.canvas-edge {
+  stroke: color-mix(in srgb, var(--accent) 42%, var(--text-tertiary));
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+.canvas-edge.selected {
+  stroke: color-mix(in srgb, var(--accent) 72%, transparent);
+  stroke-width: 2.5;
+  opacity: 1;
+}
+
+.canvas-edge.dimmed {
+  stroke: color-mix(in srgb, var(--text-tertiary) 28%, transparent);
+  opacity: 0.4;
+}
+
+.canvas-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 180px;
+  padding: 14px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--editor-bg);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: grab;
+  user-select: none;
+}
+
+.canvas-card.selected {
+  border-width: 3px;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-subtle));
+  /* box-shadow: 0 18px 44px color-mix(in srgb, var(--accent) 18%, transparent); */
+}
+
+.canvas-card:active {
+  cursor: grabbing;
+}
+
+.canvas-card-header,
+.canvas-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.canvas-card-meta{
+  margin-top: auto;
+}
+
+.canvas-card-title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+}
+
+.canvas-card-handle,
+.canvas-card-action {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.canvas-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.canvas-card-open {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid var(--border-subtle);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.canvas-card-preview {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.canvas-card-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 18px;
+}
+
+.canvas-card-tag {
+  color: var(--accent);
+  font-size: var(--text-xs);
+}

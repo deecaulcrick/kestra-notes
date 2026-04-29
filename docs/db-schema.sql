@@ -30,7 +30,33 @@ CREATE TABLE IF NOT EXISTS canvas_positions (
   x             REAL,
   y             REAL,
   width         REAL DEFAULT 280,
+  z_index       INTEGER DEFAULT 0,
   workspace_id  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS canvas_boards (
+  id            TEXT PRIMARY KEY,
+  workspace_id  TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  created_at    INTEGER,
+  updated_at    INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS canvas_board_items (
+  board_id      TEXT NOT NULL,
+  note_id       TEXT NOT NULL,
+  x             REAL,
+  y             REAL,
+  width         REAL DEFAULT 280,
+  z_index       INTEGER DEFAULT 0,
+  PRIMARY KEY (board_id, note_id)
+);
+
+CREATE TABLE IF NOT EXISTS canvas_board_views (
+  board_id      TEXT PRIMARY KEY,
+  camera_x      REAL DEFAULT 120,
+  camera_y      REAL DEFAULT 80,
+  camera_scale  REAL DEFAULT 1
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS fts_index USING fts5(
@@ -80,6 +106,8 @@ CREATE INDEX IF NOT EXISTS idx_notes_file_path ON notes(file_path);
 CREATE INDEX IF NOT EXISTS idx_notes_title ON notes(title);
 CREATE INDEX IF NOT EXISTS idx_backlinks_target ON backlinks(target_id);
 CREATE INDEX IF NOT EXISTS idx_outbound_source ON outbound_links(source_id);
+CREATE INDEX IF NOT EXISTS idx_canvas_boards_workspace ON canvas_boards(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_canvas_board_items_board ON canvas_board_items(board_id);
 CREATE INDEX IF NOT EXISTS idx_attachments_note ON attachments(note_id);
 CREATE INDEX IF NOT EXISTS idx_note_tags_note ON note_tags(note_id);
 CREATE INDEX IF NOT EXISTS idx_note_tags_tag ON note_tags(tag_id);

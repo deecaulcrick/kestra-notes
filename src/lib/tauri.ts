@@ -80,6 +80,27 @@ export interface WikiLinkResolution {
   id: string | null;
 }
 
+export interface CanvasPosition {
+  note_id: string;
+  x: number;
+  y: number;
+  width: number;
+  z_index: number;
+}
+
+export interface CanvasBoard {
+  id: string;
+  name: string;
+}
+
+export interface CanvasBoardState {
+  board_id: string;
+  camera_x: number;
+  camera_y: number;
+  camera_scale: number;
+  positions: CanvasPosition[];
+}
+
 export interface Settings {
   theme: string;
   text_font: string;
@@ -202,6 +223,28 @@ export function getSettings(): Promise<Settings> {
 
 export function saveSettings(settings: Settings): Promise<void> {
   return invoke("save_settings", { settings });
+}
+
+// ── Canvas ───────────────────────────────────────────────────────────────────
+
+export function listCanvasBoards(): Promise<CanvasBoard[]> {
+  return invoke("list_canvas_boards");
+}
+
+export function createCanvasBoard(name: string): Promise<CanvasBoard> {
+  return invoke("create_canvas_board", { name });
+}
+
+export function getCanvasBoardState(boardId: string): Promise<CanvasBoardState> {
+  return invoke("get_canvas_board_state", { boardId });
+}
+
+export function saveCanvasPosition(boardId: string, noteId: string, x: number, y: number, width: number, zIndex: number): Promise<void> {
+  return invoke("save_canvas_position", { boardId, noteId, x, y, width, zIndex });
+}
+
+export function saveCanvasCamera(boardId: string, x: number, y: number, scale: number): Promise<void> {
+  return invoke("save_canvas_camera", { boardId, x, y, scale });
 }
 
 // ── Windows ───────────────────────────────────────────────────────────────────

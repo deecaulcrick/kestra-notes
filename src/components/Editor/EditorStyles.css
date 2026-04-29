@@ -13,7 +13,6 @@
   flex: 1;
   overflow-y: auto;
   display: flex;
-
   /* Typography CSS variables (overridden by themeStore via JS) */
   --editor-font-family: "Nunito Sans", sans-serif;
   --editor-headings-font: "Nunito Sans", sans-serif;
@@ -50,6 +49,7 @@
   width: 100%;
    margin-right: auto;
   margin-bottom: auto;
+  margin: 0 auto;
 }
 
 .tiptap.ProseMirror::after {
